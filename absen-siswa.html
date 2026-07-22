@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Absensi - Check-in Siswa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar .who { font-size: 14px; font-weight: 600; }
+  .topbar .who span { color: var(--ink-soft); font-weight: 400; }
+
+  .stage {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px 20px 40px;
+    text-align: center;
+  }
+
+  .clock {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: clamp(40px, 12vw, 64px);
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .date-line {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    margin-bottom: 36px;
+  }
+
+  .mapel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .mapel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s ease, border-color 0.15s ease;
+  }
+  .mapel-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+  .mapel-status { font-size: 12px; color: var(--ink-faint); font-family: var(--font-mono); }
+
+  .checkin-btn {
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(46, 92, 230, 0.35);
+  }
+  .checkin-btn:hover:not(:disabled) { background: var(--primary-dark); }
+  .checkin-btn.done {
+    background: var(--success-bg);
+    color: var(--success);
+    box-shadow: none;
+  }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  .checkin-btn.just-done { animation: pop 0.35s ease; }
+
+  .logout-link {
+    background: none; border: none;
+    color: var(--ink-soft);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="who">Halo, <span id="namaSiswa">-</span></div>
+  <button class="logout-link" onclick="doLogout()">Keluar</button>
+</div>
+
+<div class="stage">
+  <div class="clock" id="clock">--:--:--</div>
+  <div class="date-line" id="dateLine">-</div>
+
+  <div class="mapel-grid" id="mapelGrid">
+    <!-- diisi lewat JS: kartu TIK & KKA -->
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+  const MAPEL = ['TIK', 'KKA'];
+  let statusMap = { TIK: null, KKA: null };
+
+  function tickClock() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    document.getElementById('clock').textContent =
+      `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const hari = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][now.getDay()];
+    const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][now.getMonth()];
+    document.getElementById('dateLine').textContent = `${hari}, ${now.getDate()} ${bulan} ${now.getFullYear()}`;
+  }
+  setInterval(tickClock, 1000);
+  tickClock();
+
+  function renderMapelGrid() {
+    const grid = document.getElementById('mapelGrid');
+    grid.innerHTML = '';
+    MAPEL.forEach((mapel) => {
+      const done = statusMap[mapel];
+      const card = document.createElement('div');
+      card.className = 'mapel-card';
+      card.innerHTML = `
+        <div class="mapel-name">${mapel}</div>
+        <button class="checkin-btn ${done ? 'done' : ''}" data-mapel="${mapel}" ${done ? 'disabled' : ''}>
+          ${done ? '&#10003;' : 'Absen'}
+        </button>
+        <div class="mapel-status">${done ? 'Tercatat ' + done : 'Belum check-in'}</div>
+      `;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.checkin-btn:not(:disabled)').forEach((btn) => {
+      btn.addEventListener('click', () => handleCheckin(btn.dataset.mapel, btn));
+    });
+  }
+
+  function showToast(msg, type) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + (type || '');
+    setTimeout(() => { el.className = 'toast'; }, 3200);
+  }
+
+  async function handleCheckin(mapel, btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '...';
+    try {
+      const res = await apiPost('checkin', { token: getToken(), mapel });
+      if (res.ok) {
+        statusMap[mapel] = res.waktu;
+        renderMapelGrid();
+        showToast(res.message, 'success');
+        const newBtn = document.querySelector(`.checkin-btn[data-mapel="${mapel}"]`);
+        if (newBtn) newBtn.classList.add('just-done');
+      } else {
+        showToast(res.error, 'error');
+        btnEl.disabled = false;
+        btnEl.textContent = 'Absen';
+      }
+    } catch (err) {
+      showToast('Gagal terhubung ke server', 'error');
+      btnEl.disabled = false;
+      btnEl.textContent = 'Absen';
+    }
+  }
+
+  async function loadStatus() {
+    const res = await apiPost('getAbsensiHariIni', { token: getToken() });
+    if (res.ok) {
+      statusMap = res.status;
+      renderMapelGrid();
+    }
+  }
+
+  function doLogout() {
+    apiPost('logout', { token: getToken() }).finally(() => {
+      clearSession();
+      window.location.href = 'index.html';
+    });
+  }
+
+  (async function init() {
+    const session = await guardPage('siswa');
+    if (!session) return;
+    document.getElementById('namaSiswa').textContent = getNama();
+    await loadStatus();
+  })();
+</script>
+</body>
+</html>

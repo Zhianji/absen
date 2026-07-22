@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Absensi - Masuk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .login-wrap { width: 100%; max-width: 380px; }
+  .brand {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .brand .mark {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+  }
+  .brand h1 { font-size: 20px; color: var(--ink); }
+  .brand p { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+
+  .tabs {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 9px 0;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+
+  .login-panel { padding: 28px; }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .login-panel .btn-primary { width: 100%; margin-top: 6px; }
+  .err-msg {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+    display: none;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="brand">
+    <div class="mark">A</div>
+    <h1>Absensi Digital</h1>
+    <p>Masuk sesuai peranmu untuk melanjutkan</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabSiswa" onclick="switchTab('siswa')">Siswa</button>
+    <button class="tab" id="tabGuru" onclick="switchTab('guru')">Guru</button>
+  </div>
+
+  <div class="card login-panel">
+    <!-- FORM SISWA -->
+    <form id="formSiswa" onsubmit="return submitSiswa(event)">
+      <div class="field">
+        <label for="nis">NIS</label>
+        <input id="nis" type="text" inputmode="numeric" placeholder="Nomor Induk Siswa" required />
+      </div>
+      <div class="field">
+        <label for="passSiswa">Password</label>
+        <input id="passSiswa" type="password" placeholder="Password" required />
+      </div>
+      <button class="btn-primary" type="submit" id="btnSiswa">Masuk sebagai Siswa</button>
+    </form>
+
+    <!-- FORM GURU -->
+    <form id="formGuru" class="hidden" onsubmit="return submitGuru(event)">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" type="text" placeholder="Username guru" required />
+      </div>
+      <div class="field">
+        <label for="passGuru">Password</label>
+        <input id="passGuru" type="password" placeholder="Password" required />
+      </div>
+      <button class="btn-primary" type="submit" id="btnGuru">Masuk sebagai Guru</button>
+    </form>
+
+    <p class="err-msg" id="errMsg"></p>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+  function switchTab(role) {
+    const isSiswa = role === 'siswa';
+    document.getElementById('tabSiswa').classList.toggle('active', isSiswa);
+    document.getElementById('tabGuru').classList.toggle('active', !isSiswa);
+    document.getElementById('formSiswa').classList.toggle('hidden', !isSiswa);
+    document.getElementById('formGuru').classList.toggle('hidden', isSiswa);
+    hideErr();
+  }
+
+  function showErr(msg) {
+    const el = document.getElementById('errMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideErr() {
+    document.getElementById('errMsg').style.display = 'none';
+  }
+
+  async function submitSiswa(e) {
+    e.preventDefault();
+    hideErr();
+    const btn = document.getElementById('btnSiswa');
+    btn.disabled = true; btn.textContent = 'Memeriksa...';
+    const nis = document.getElementById('nis').value.trim();
+    const password = document.getElementById('passSiswa').value;
+    try {
+      const res = await apiPost('loginSiswa', { nis, password });
+      if (res.ok) {
+        saveSession(res.token, 'siswa', res.nama);
+        window.location.href = 'absen-siswa.html';
+      } else {
+        showErr(res.error || 'Login gagal');
+      }
+    } catch (err) {
+      showErr('Tidak bisa terhubung ke server. Cek koneksi internet.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Masuk sebagai Siswa';
+    }
+    return false;
+  }
+
+  async function submitGuru(e) {
+    e.preventDefault();
+    hideErr();
+    const btn = document.getElementById('btnGuru');
+    btn.disabled = true; btn.textContent = 'Memeriksa...';
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('passGuru').value;
+    try {
+      const res = await apiPost('loginGuru', { username, password });
+      if (res.ok) {
+        saveSession(res.token, 'guru', res.nama);
+        window.location.href = 'dashboard-guru-enhanced.html';
+      } else {
+        showErr(res.error || 'Login gagal');
+      }
+    } catch (err) {
+      showErr('Tidak bisa terhubung ke server. Cek koneksi internet.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Masuk sebagai Guru';
+    }
+    return false;
+  }
+
+  // Jika sudah login, langsung redirect
+  (function autoRedirect() {
+    const token = getToken();
+    const role = getRole();
+    if (token && role === 'siswa') window.location.href = 'absen-siswa.html';
+    else if (token && role === 'guru') window.location.href = 'dashboard-guru-enhanced.html';
+  })();
+</script>
+</body>
+</html>

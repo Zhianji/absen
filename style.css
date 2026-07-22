@@ -1,0 +1,161 @@
+/* ============ DESIGN TOKENS ============
+   Palette   : latar netral terang, tinta navy-charcoal, aksen biru untuk aksi,
+               hijau=hadir/sukses, merah=galat/sudah absen, amber=aksen KKA.
+   Tipografi : Space Grotesk (display, geometris - identitas "digital attendance"),
+               Inter (body, sangat legible untuk tabel data),
+               IBM Plex Mono (angka/waktu/NIS - kesan jam presensi digital).
+   Signature : jam digital mono besar di layar check-in siswa + tombol bulat
+               besar bertekstur "tap-to-mark" dengan animasi centang singkat.
+*/
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --border: #e3e6ec;
+  --ink: #1b2233;
+  --ink-soft: #5b6478;
+  --ink-faint: #9aa2b4;
+
+  --primary: #2e5ce6;
+  --primary-dark: #1e44bd;
+  --primary-bg: #eaf0ff;
+
+  --success: #1e9e6b;
+  --success-bg: #e6f7ef;
+
+  --danger: #e1483c;
+  --danger-bg: #fdebea;
+
+  --amber: #d98a1f;
+  --amber-bg: #fbf1de;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(27, 34, 51, 0.04), 0 8px 24px rgba(27, 34, 51, 0.06);
+
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: transform 0.08s ease, opacity 0.15s ease, background 0.15s ease;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+input, select {
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+input::placeholder { color: var(--ink-faint); }
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 20px;
+}
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 500;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--bg); color: var(--ink); }
+
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-weight: 600;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-idle { background: var(--bg); color: var(--ink-faint); border: 1px solid var(--border); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--ink);
+  color: #fff;
+  padding: 13px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--danger); }
+.toast.success { background: var(--success); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Bungkus setiap <table> dengan <div class="table-wrap"> supaya di layar
+   sempit tabel bisa di-scroll ke samping alih-alih kolomnya terpotong
+   atau bikin seluruh halaman melebar. */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-wrap table { min-width: 560px; }

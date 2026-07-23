@@ -14,11 +14,66 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-x: hidden;
+    position: relative;
+    background: linear-gradient(135deg, var(--bg) 0%, var(--primary-bg) 100%);
+    background-size: 200% 200%;
+    animation: bgShift 12s ease-in-out infinite;
   }
-  .login-wrap { width: 100%; max-width: 380px; }
+
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Blob dekoratif melayang halus di belakang form */
+  .bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.35;
+    z-index: 0;
+    pointer-events: none;
+    animation: floatBlob 10s ease-in-out infinite;
+  }
+  .bg-blob.one {
+    width: 260px; height: 260px;
+    background: var(--primary);
+    top: -60px; left: -60px;
+  }
+  .bg-blob.two {
+    width: 220px; height: 220px;
+    background: var(--amber);
+    bottom: -50px; right: -50px;
+    animation-delay: -4s;
+  }
+  @keyframes floatBlob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(20px, -20px) scale(1.08); }
+  }
+
+  .login-wrap {
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+    z-index: 1;
+    opacity: 0;
+    transform: translateY(24px);
+    animation: fadeSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes fadeSlideUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .brand {
     text-align: center;
     margin-bottom: 28px;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.1s;
   }
   .brand .mark {
     width: 52px; height: 52px;
@@ -30,6 +85,12 @@
     font-size: 20px;
     display: flex; align-items: center; justify-content: center;
     margin: 0 auto 14px;
+    box-shadow: 0 8px 20px rgba(46, 92, 230, 0.35);
+    animation: markPulse 3s ease-in-out infinite;
+  }
+  @keyframes markPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 8px 20px rgba(46, 92, 230, 0.35); }
+    50% { transform: scale(1.05); box-shadow: 0 10px 26px rgba(46, 92, 230, 0.45); }
   }
   .brand h1 { font-size: 20px; color: var(--ink); }
   .brand p { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
@@ -41,6 +102,11 @@
     border-radius: var(--radius-sm);
     padding: 4px;
     margin-bottom: 20px;
+    position: relative;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.18s;
   }
   .tab {
     flex: 1;
@@ -53,10 +119,31 @@
     cursor: pointer;
     background: none;
     border: none;
+    position: relative;
+    z-index: 1;
+    transition: color 0.25s ease;
   }
-  .tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+  .tab.active { color: var(--primary); }
+  .tab-indicator {
+    position: absolute;
+    top: 4px; bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    background: var(--surface);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    transition: transform 0.32s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .tab-indicator.guru { transform: translateX(100%); }
 
-  .login-panel { padding: 28px; }
+  .login-panel {
+    padding: 28px;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.26s;
+    transition: box-shadow 0.3s ease;
+  }
   .field { margin-bottom: 14px; }
   .field label {
     display: block;
@@ -67,7 +154,32 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
-  .login-panel .btn-primary { width: 100%; margin-top: 6px; }
+  .field input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-bg);
+  }
+  .login-panel .btn-primary {
+    width: 100%;
+    margin-top: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-panel .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 16px rgba(46, 92, 230, 0.3);
+  }
+
+  /* Transisi swap form Siswa / Guru */
+  #formSiswa, #formGuru {
+    animation: formFade 0.35s ease;
+  }
+  @keyframes formFade {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
   .err-msg {
     color: var(--danger);
     font-size: 13px;
@@ -75,10 +187,44 @@
     text-align: center;
     display: none;
   }
+  .err-msg.show {
+    display: block;
+    animation: shakeFade 0.4s ease;
+  }
+  @keyframes shakeFade {
+    0% { opacity: 0; transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  .credit {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    opacity: 0;
+    animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.4s;
+  }
+
   .hidden { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    body, .bg-blob, .login-wrap, .brand, .brand .mark, .tabs, .login-panel,
+    #formSiswa, #formGuru, .err-msg, .credit {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
 </style>
 </head>
 <body>
+
+<div class="bg-blob one"></div>
+<div class="bg-blob two"></div>
 
 <div class="login-wrap">
   <div class="brand">
@@ -88,6 +234,7 @@
   </div>
 
   <div class="tabs">
+    <div class="tab-indicator" id="tabIndicator"></div>
     <button class="tab active" id="tabSiswa" onclick="switchTab('siswa')">Siswa</button>
     <button class="tab" id="tabGuru" onclick="switchTab('guru')">Guru</button>
   </div>
@@ -121,6 +268,8 @@
 
     <p class="err-msg" id="errMsg"></p>
   </div>
+
+  <p class="credit">&copy; Copyright Pak Reza</p>
 </div>
 
 <script src="config.js"></script>
@@ -129,6 +278,7 @@
     const isSiswa = role === 'siswa';
     document.getElementById('tabSiswa').classList.toggle('active', isSiswa);
     document.getElementById('tabGuru').classList.toggle('active', !isSiswa);
+    document.getElementById('tabIndicator').classList.toggle('guru', !isSiswa);
     document.getElementById('formSiswa').classList.toggle('hidden', !isSiswa);
     document.getElementById('formGuru').classList.toggle('hidden', isSiswa);
     hideErr();
@@ -137,10 +287,13 @@
   function showErr(msg) {
     const el = document.getElementById('errMsg');
     el.textContent = msg;
-    el.style.display = 'block';
+    el.classList.remove('show');
+    // trigger reflow supaya animasi shake bisa diulang
+    void el.offsetWidth;
+    el.classList.add('show');
   }
   function hideErr() {
-    document.getElementById('errMsg').style.display = 'none';
+    document.getElementById('errMsg').classList.remove('show');
   }
 
   async function submitSiswa(e) {

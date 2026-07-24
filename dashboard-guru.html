@@ -25,6 +25,7 @@
     padding: 10px 12px; border-radius: var(--radius-sm);
     font-size: 14px; font-weight: 500; color: var(--ink-soft);
     margin-bottom: 3px;
+    text-decoration: none; box-sizing: border-box; cursor: pointer;
   }
   .nav-item.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
   .nav-item:hover:not(.active) { background: var(--bg); }
@@ -154,6 +155,7 @@
   <button class="nav-item active" data-view="overview" onclick="switchView('overview')">Dashboard</button>
   <button class="nav-item" data-view="siswa" onclick="switchView('siswa')">Data Siswa</button>
   <button class="nav-item" data-view="laporan" onclick="switchView('laporan')">Laporan</button>
+  <a class="nav-item" href="admin.html">Kelola Akun Admin</a>
   <div class="sidebar-footer">
     <div class="who" id="namaGuru">-</div>
     <button class="nav-item logout" onclick="doLogout()">Keluar</button>

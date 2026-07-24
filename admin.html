@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Absensi - Kelola Akun Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body { display: flex; min-height: 100vh; }
+
+  /* ===== Layar login (tampil kalau belum ada sesi valid) ===== */
+  #loginScreen {
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--bg) 0%, var(--primary-bg) 100%);
+  }
+  .login-wrap { width: 100%; max-width: 380px; }
+  .brand-mark {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    box-shadow: 0 8px 20px rgba(46, 92, 230, 0.35);
+  }
+  .login-brand { text-align: center; margin-bottom: 24px; }
+  .login-brand h1 { font-size: 19px; color: var(--ink); }
+  .login-brand p { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+  .login-panel { padding: 26px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  .form-error {
+    background: var(--danger-bg); color: var(--danger);
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; margin-bottom: 14px; display: none;
+  }
+  .form-error.show { display: block; }
+  .back-link { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+  .back-link:hover { color: var(--primary); }
+
+  /* ===== Sidebar + layout dashboard (mirror dashboard-guru.html) ===== */
+  #adminApp { display: none; flex: 1; min-height: 100vh; }
+  #adminApp.show { display: flex; }
+
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column;
+  }
+  .sidebar .brand { font-family: var(--font-display); font-weight: 700; font-size: 16px; padding: 6px 10px 22px; }
+  .nav-item {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500; color: var(--ink-soft);
+    margin-bottom: 3px; text-decoration: none;
+  }
+  .nav-item.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+  .nav-item:hover:not(.active) { background: var(--bg); }
+  .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
+  .sidebar-footer .who { font-size: 13px; font-weight: 600; padding: 0 10px 8px; }
+  .sidebar-footer .logout { color: var(--danger); }
+
+  .main { flex: 1; padding: 28px 32px; max-width: 900px; }
+  .page-header { margin-bottom: 22px; }
+  .page-header h2 { font-size: 22px; }
+  .page-header p { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+
+  .panel { padding: 20px; margin-bottom: 20px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .panel-head h3 { font-size: 16px; }
+  .panel-head p { color: var(--ink-soft); font-size: 12.5px; margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px; }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row-actions button { padding: 5px 10px; font-size: 12px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin-bottom: 12px; }
+  .form-actions { display: flex; gap: 8px; }
+  .hint { font-size: 12px; color: var(--ink-faint); margin-top: -4px; margin-bottom: 12px; }
+
+  /* ===== Modal ringan untuk edit & reset password ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(27, 34, 51, 0.42);
+    align-items: center; justify-content: center;
+    padding: 20px; z-index: 60;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card { width: 100%; max-width: 380px; padding: 22px; }
+  .modal-card h3 { font-size: 16px; margin-bottom: 4px; }
+  .modal-card .sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+
+  .topbar-mobile { display: none; }
+  .menu-toggle {
+    width: 38px; height: 38px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 18px; line-height: 1;
+  }
+  .sidebar-overlay { display: none; }
+
+  @media (max-width: 860px) {
+    #adminApp.show { flex-direction: column; }
+    .topbar-mobile {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 30;
+    }
+    .topbar-mobile .brand { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 240px; z-index: 50;
+      transform: translateX(-100%); transition: transform 0.22s ease;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(27,34,51,0.4); z-index: 40;
+    }
+    .sidebar-overlay.show { display: block; }
+    .main { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="brand-mark">AB</div>
+      <h1>Kelola Akun Admin</h1>
+      <p>Masuk dengan akun Guru/Admin untuk mengelola akun admin lain</p>
+    </div>
+    <div class="card login-panel">
+      <div class="form-error" id="loginError"></div>
+      <form id="loginForm" onsubmit="submitLogin(event)">
+        <div class="field">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%" id="loginBtn">Masuk</button>
+      </form>
+    </div>
+    <a class="back-link" href="index.html">&larr; Kembali ke halaman login utama</a>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD KELOLA ADMIN ===== -->
+<div id="adminApp">
+  <div class="topbar-mobile">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Buka menu">&#9776;</button>
+    <div class="brand">Kelola Akun Admin</div>
+  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="brand">Absensi Digital</div>
+    <a class="nav-item" href="dashboard-guru.html">Dashboard Guru</a>
+    <button class="nav-item active">Kelola Akun Admin</button>
+    <div class="sidebar-footer">
+      <div class="who" id="namaGuru">-</div>
+      <button class="nav-item logout" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h2>Kelola Akun Admin</h2>
+      <p>Tambah, ubah, reset password, atau hapus akun Guru/Admin.</p>
+    </div>
+
+    <!-- Daftar akun admin -->
+    <div class="card panel">
+      <div class="panel-head">
+        <div>
+          <h3>Daftar Akun Admin</h3>
+          <p>Password tidak pernah ditampilkan -- hanya bisa direset.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Username</th><th>Nama</th><th>Aksi</th></tr>
+          </thead>
+          <tbody id="guruTableBody">
+            <tr class="empty-row"><td colspan="3">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tambah admin baru -->
+    <div class="card panel">
+      <div class="panel-head"><h3>Tambah Admin Baru</h3></div>
+      <div class="form-error" id="addError"></div>
+      <form id="addForm" onsubmit="submitAddGuru(event)">
+        <div class="form-grid">
+          <input type="text" id="newUsername" placeholder="Username" required />
+          <input type="text" id="newNama" placeholder="Nama lengkap" required />
+          <input type="password" id="newPassword" placeholder="Password (min. 6 karakter)" required minlength="6" />
+          <input type="password" id="newPasswordConfirm" placeholder="Ulangi password" required minlength="6" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Tambah Admin</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Ganti password akun sendiri -->
+    <div class="card panel">
+      <div class="panel-head">
+        <div>
+          <h3>Ganti Password Saya</h3>
+          <p>Wajib masukkan password lama untuk konfirmasi.</p>
+        </div>
+      </div>
+      <div class="form-error" id="ownPassError"></div>
+      <form id="ownPassForm" onsubmit="submitChangeOwnPassword(event)">
+        <div class="form-grid">
+          <input type="password" id="oldPassword" placeholder="Password lama" required />
+          <input type="password" id="newOwnPassword" placeholder="Password baru (min. 6 karakter)" required minlength="6" />
+          <input type="password" id="newOwnPasswordConfirm" placeholder="Ulangi password baru" required minlength="6" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Ganti Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Edit username/nama ===== -->
+<div class="modal-overlay" id="editModal">
+  <div class="card modal-card">
+    <h3>Edit Akun Admin</h3>
+    <p class="sub">Ubah username atau nama. Tidak mengubah password.</p>
+    <div class="form-error" id="editError"></div>
+    <form id="editForm" onsubmit="submitEdit(event)">
+      <input type="hidden" id="editId" />
+      <div class="field">
+        <label for="editUsername">Username</label>
+        <input type="text" id="editUsername" required />
+      </div>
+      <div class="field">
+        <label for="editNama">Nama</label>
+        <input type="text" id="editNama" required />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Simpan</button>
+        <button type="button" class="btn-ghost" onclick="closeModal('editModal')">Batal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Modal: Reset password akun lain ===== -->
+<div class="modal-overlay" id="resetModal">
+  <div class="card modal-card">
+    <h3>Reset Password</h3>
+    <p class="sub">Untuk akun: <strong id="resetUsernameLabel">-</strong></p>
+    <div class="form-error" id="resetError"></div>
+    <form id="resetForm" onsubmit="submitReset(event)">
+      <input type="hidden" id="resetId" />
+      <div class="field">
+        <label for="resetPassword">Password baru</label>
+        <input type="password" id="resetPassword" required minlength="6" />
+      </div>
+      <div class="field">
+        <label for="resetPasswordConfirm">Ulangi password baru</label>
+        <input type="password" id="resetPasswordConfirm" required minlength="6" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Reset Password</button>
+        <button type="button" class="btn-ghost" onclick="closeModal('resetModal')">Batal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+  let currentUserId = null;
+  let guruCache = [];
+
+  // ---------- INIT ----------
+  (async function init() {
+    const token = getToken();
+    if (!token) { showLogin(); return; }
+    const check = await apiPost('checkSession', { token });
+    if (!check.ok || check.role !== 'guru') {
+      clearSession();
+      showLogin();
+      return;
+    }
+    currentUserId = check.user_id;
+    document.getElementById('namaGuru').textContent = check.nama || '-';
+    showApp();
+    loadGuruList();
+  })();
+
+  function showLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('adminApp').classList.remove('show');
+  }
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminApp').classList.add('show');
+  }
+
+  // ---------- LOGIN ----------
+  async function submitLogin(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('loginError');
+    errEl.classList.remove('show');
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    try {
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const res = await apiPost('loginGuru', { username, password });
+      if (!res.ok) {
+        errEl.textContent = res.error || 'Login gagal';
+        errEl.classList.add('show');
+        return;
+      }
+      saveSession(res.token, res.role, res.nama);
+      currentUserId = null; // diisi ulang oleh checkSession di init berikutnya
+      const check = await apiPost('checkSession', { token: res.token });
+      currentUserId = check.ok ? check.user_id : null;
+      document.getElementById('namaGuru').textContent = res.nama || '-';
+      showApp();
+      loadGuruList();
+    } catch (err) {
+      errEl.textContent = 'Tidak bisa terhubung ke server. Coba lagi.';
+      errEl.classList.add('show');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function doLogout() {
+    apiPost('logout', { token: getToken() }).finally(() => {
+      clearSession();
+      window.location.href = 'index.html';
+    });
+  }
+
+  // ---------- SIDEBAR MOBILE ----------
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  }
+
+  // ---------- HELPERS ----------
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showToast(msg, type) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + (type || '');
+    setTimeout(() => { el.className = 'toast'; }, 3200);
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('show'); }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+    document.getElementById(id).querySelectorAll('.form-error').forEach(el => el.classList.remove('show'));
+  }
+
+  // ---------- DAFTAR AKUN ADMIN ----------
+  async function loadGuruList() {
+    const res = await apiPost('getGuruList', { token: getToken() });
+    const tbody = document.getElementById('guruTableBody');
+    if (!res.ok) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="3">Gagal memuat: ${escapeHtml(res.error)}</td></tr>`;
+      return;
+    }
+    guruCache = res.data;
+    if (guruCache.length === 0) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="3">Belum ada akun admin</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = guruCache.map(g => {
+      const isSelf = String(g.id) === String(currentUserId);
+      return `<tr>
+        <td class="mono">${escapeHtml(g.username)}${isSelf ? ' <span class="badge badge-idle">Kamu</span>' : ''}</td>
+        <td>${escapeHtml(g.nama)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-ghost" onclick='openEditModal(${JSON.stringify(g.id)}, ${JSON.stringify(g.username)}, ${JSON.stringify(g.nama)})'>Edit</button>
+            ${isSelf ? '' : `<button class="btn-ghost" onclick='openResetModal(${JSON.stringify(g.id)}, ${JSON.stringify(g.username)})'>Reset Password</button>`}
+            ${isSelf ? '' : `<button class="btn-danger" onclick='confirmDeleteGuru(${JSON.stringify(g.id)}, ${JSON.stringify(g.username)})'>Hapus</button>`}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---------- TAMBAH ADMIN ----------
+  async function submitAddGuru(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('addError');
+    errEl.classList.remove('show');
+
+    const username = document.getElementById('newUsername').value.trim();
+    const nama = document.getElementById('newNama').value.trim();
+    const password = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('newPasswordConfirm').value;
+
+    if (password !== confirm) {
+      errEl.textContent = 'Konfirmasi password tidak cocok';
+      errEl.classList.add('show');
+      return;
+    }
+
+    const res = await apiPost('createGuru', { token: getToken(), username, password, nama });
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Gagal menambah admin';
+      errEl.classList.add('show');
+      return;
+    }
+    document.getElementById('addForm').reset();
+    showToast('Admin baru berhasil ditambahkan', 'success');
+    loadGuruList();
+  }
+
+  // ---------- EDIT USERNAME/NAMA ----------
+  function openEditModal(id, username, nama) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editUsername').value = username;
+    document.getElementById('editNama').value = nama;
+    openModal('editModal');
+  }
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('editError');
+    errEl.classList.remove('show');
+
+    const id = document.getElementById('editId').value;
+    const username = document.getElementById('editUsername').value.trim();
+    const nama = document.getElementById('editNama').value.trim();
+
+    const res = await apiPost('updateGuru', { token: getToken(), id, username, nama });
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Gagal menyimpan perubahan';
+      errEl.classList.add('show');
+      return;
+    }
+    closeModal('editModal');
+    showToast('Perubahan disimpan', 'success');
+    loadGuruList();
+  }
+
+  // ---------- RESET PASSWORD (akun lain) ----------
+  function openResetModal(id, username) {
+    document.getElementById('resetId').value = id;
+    document.getElementById('resetUsernameLabel').textContent = username;
+    document.getElementById('resetForm').reset();
+    openModal('resetModal');
+  }
+
+  async function submitReset(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('resetError');
+    errEl.classList.remove('show');
+
+    const id = document.getElementById('resetId').value;
+    const password = document.getElementById('resetPassword').value;
+    const confirm = document.getElementById('resetPasswordConfirm').value;
+
+    if (password !== confirm) {
+      errEl.textContent = 'Konfirmasi password tidak cocok';
+      errEl.classList.add('show');
+      return;
+    }
+
+    const res = await apiPost('resetGuruPassword', { token: getToken(), id, password });
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Gagal reset password';
+      errEl.classList.add('show');
+      return;
+    }
+    closeModal('resetModal');
+    showToast('Password berhasil direset', 'success');
+  }
+
+  // ---------- HAPUS AKUN ----------
+  async function confirmDeleteGuru(id, username) {
+    if (!confirm(`Hapus akun admin "${username}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    const res = await apiPost('deleteGuru', { token: getToken(), id });
+    if (!res.ok) {
+      showToast(res.error || 'Gagal menghapus akun', 'error');
+      return;
+    }
+    showToast('Akun admin dihapus', 'success');
+    loadGuruList();
+  }
+
+  // ---------- GANTI PASSWORD SENDIRI ----------
+  async function submitChangeOwnPassword(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('ownPassError');
+    errEl.classList.remove('show');
+
+    const old_password = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newOwnPassword').value;
+    const confirm = document.getElementById('newOwnPasswordConfirm').value;
+
+    if (newPassword !== confirm) {
+      errEl.textContent = 'Konfirmasi password baru tidak cocok';
+      errEl.classList.add('show');
+      return;
+    }
+
+    const res = await apiPost('changeOwnPassword', { token: getToken(), old_password, new_password: newPassword });
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Gagal mengganti password';
+      errEl.classList.add('show');
+      return;
+    }
+    document.getElementById('ownPassForm').reset();
+    showToast('Password berhasil diganti', 'success');
+  }
+</script>
+</body>
+</html>

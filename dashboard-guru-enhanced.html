@@ -680,9 +680,12 @@
     }
 
     if (laporanRes.ok) {
-      const data = laporanRes.data;
-      const tikCount = data.filter(r => r.mapel === 'TIK').length;
-      const kkaCount = data.filter(r => r.mapel === 'KKA').length;
+      const allData = laporanRes.data; // cakupan 7 hari terakhir (untuk chart tren)
+      const today = new Date().toISOString().slice(0,10);
+      const todayData = allData.filter(r => r.tanggal === today); // khusus hari ini (untuk kartu/pie/leaderboard/aktivitas)
+
+      const tikCount = todayData.filter(r => r.mapel === 'TIK').length;
+      const kkaCount = todayData.filter(r => r.mapel === 'KKA').length;
       const total = siswaRes.ok ? siswaRes.data.length : 0;
 
       document.getElementById('statTIK').textContent = tikCount;
@@ -690,12 +693,12 @@
       document.getElementById('trendTIK').textContent = `${total > 0 ? Math.round(tikCount/total*100) : 0}% dari total`;
       document.getElementById('trendKKA').textContent = `${total > 0 ? Math.round(kkaCount/total*100) : 0}% dari total`;
 
-      renderAttendanceChart(data);
-      renderStatusChart(data);
-      renderLeaderboard(data);
+      renderAttendanceChart(allData);   // BARU: pakai data 7 hari, bukan cuma hari ini
+      renderStatusChart(todayData);
+      renderLeaderboard(todayData);
 
       const tbody = document.getElementById('tblAktivitas');
-      const recent = data.slice(0, 8);
+      const recent = todayData.slice(0, 8);
       tbody.innerHTML = recent.length ? recent.map(r => `
         <tr><td>${escapeHtml(r.nama_siswa)}</td><td>${escapeHtml(r.kelas)}</td><td>${escapeHtml(r.mapel)}</td><td class="mono">${escapeHtml(r.waktu)}</td></tr>
       `).join('') : '<tr class="empty-row"><td colspan="4">Belum ada aktivitas hari ini</td></tr>';
@@ -707,10 +710,13 @@
   // di belakang layar begitu data terbaru datang dari server.
   async function loadOverview() {
     const today = new Date().toISOString().slice(0,10);
+    const sevenDaysAgoDate = new Date();
+    sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 6);
+    const startDate = sevenDaysAgoDate.toISOString().slice(0,10);
     const token = getToken();
 
     const cachedSiswa = getCached('cache_siswa_list');
-    const cachedLaporan = getCached('cache_overview');
+    const cachedLaporan = getCached('cache_overview_v2');
 
     if (cachedSiswa && cachedLaporan) {
       renderOverview(cachedSiswa, cachedLaporan); // instan dari cache
@@ -718,14 +724,17 @@
       showOverviewSkeleton();
     }
 
-    // Selalu fetch data terbaru di background, lalu re-render + simpan cache
+    // Selalu fetch data terbaru di background, lalu re-render + simpan cache.
+    // FIX: ambil rentang 7 hari (bukan cuma hari ini) supaya chart "Attendance
+    // Trend (7 Hari Terakhir)" benar-benar berisi data 7 hari, bukan 1 batang
+    // terisi + 6 batang kosong.
     const [siswaRes, laporanRes] = await Promise.all([
       apiPost('getSiswaList', { token }),
-      apiPost('getLaporan', { token, tanggal_mulai: today, tanggal_selesai: today }),
+      apiPost('getLaporan', { token, tanggal_mulai: startDate, tanggal_selesai: today }),
     ]);
 
     if (siswaRes.ok) setCached('cache_siswa_list', siswaRes);
-    if (laporanRes.ok) setCached('cache_overview', laporanRes);
+    if (laporanRes.ok) setCached('cache_overview_v2', laporanRes);
 
     renderOverview(siswaRes, laporanRes);
   }

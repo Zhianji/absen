@@ -35,7 +35,7 @@ async function apiPost(action, data = {}) {
 // Data hasil apiPost disimpan di localStorage selama `duration` ms, jadi
 // saat halaman dibuka lagi, data tampil instan sambil update di background.
 const CACHE_DURATIONS = {
-  cache_overview: 5 * 60 * 1000,        // 5 menit
+  cache_overview_v2: 5 * 60 * 1000,        // 5 menit
   cache_siswa_list: 30 * 60 * 1000,     // 30 menit
   cache_kelas_list: 60 * 60 * 1000,     // 1 jam
 };

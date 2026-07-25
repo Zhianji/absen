@@ -274,6 +274,10 @@
 
 <script src="config.js"></script>
 <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
+
   function switchTab(role) {
     const isSiswa = role === 'siswa';
     document.getElementById('tabSiswa').classList.toggle('active', isSiswa);

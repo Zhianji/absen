@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/recharts.min.js"></script>
 <style>
   /* ===== SOFT & MINIMAL PASTEL PALETTE ===== */
   :root {
@@ -94,6 +93,17 @@
     position: relative; overflow: hidden; transition: all 0.3s ease;
   }
   .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .skeleton {
+    background: linear-gradient(90deg, #eef0f6 25%, #e2e5ee 50%, #eef0f6 75%);
+    background-size: 200% 100%;
+    animation: skeletonLoading 1.4s ease-in-out infinite;
+    color: transparent !important;
+    border-radius: 6px;
+  }
+  @keyframes skeletonLoading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .stat-card.variant-blue { background: linear-gradient(135deg, var(--accent-blue-light) 0%, rgba(255,255,255,0.8) 100%); border-left: 4px solid var(--accent-blue); }
   .stat-card.variant-purple { background: linear-gradient(135deg, var(--accent-purple-light) 0%, rgba(255,255,255,0.8) 100%); border-left: 4px solid var(--accent-purple); }
   .stat-card.variant-green { background: linear-gradient(135deg, var(--accent-green-light) 0%, rgba(255,255,255,0.8) 100%); border-left: 4px solid var(--accent-green); }
@@ -654,18 +664,21 @@
   }
 
   // ===== OVERVIEW =====
-  async function loadOverview() {
-    const today = new Date().toISOString().slice(0,10);
-    const [siswaRes, laporanRes] = await Promise.all([
-      apiPost('getSiswaList', { token: getToken() }),
-      apiPost('getLaporan', { token: getToken(), tanggal_mulai: today, tanggal_selesai: today }),
-    ]);
-    
+  function showOverviewSkeleton() {
+    ['statTotalSiswa', 'statTIK', 'statKKA'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = '000';
+      el.classList.add('skeleton');
+    });
+  }
+
+  function renderOverview(siswaRes, laporanRes) {
+    ['statTotalSiswa', 'statTIK', 'statKKA'].forEach(id => document.getElementById(id).classList.remove('skeleton'));
+
     if (siswaRes.ok) {
-      const total = siswaRes.data.length;
-      document.getElementById('statTotalSiswa').textContent = total;
+      document.getElementById('statTotalSiswa').textContent = siswaRes.data.length;
     }
-    
+
     if (laporanRes.ok) {
       const data = laporanRes.data;
       const tikCount = data.filter(r => r.mapel === 'TIK').length;
@@ -687,6 +700,34 @@
         <tr><td>${escapeHtml(r.nama_siswa)}</td><td>${escapeHtml(r.kelas)}</td><td>${escapeHtml(r.mapel)}</td><td class="mono">${escapeHtml(r.waktu)}</td></tr>
       `).join('') : '<tr class="empty-row"><td colspan="4">Belum ada aktivitas hari ini</td></tr>';
     }
+  }
+
+  // BARU: pakai cache -- kunjungan pertama tetap nunggu API (skeleton tampil),
+  // tapi kunjungan berikutnya data lama muncul INSTAN sambil di-update diam-diam
+  // di belakang layar begitu data terbaru datang dari server.
+  async function loadOverview() {
+    const today = new Date().toISOString().slice(0,10);
+    const token = getToken();
+
+    const cachedSiswa = getCached('cache_siswa_list');
+    const cachedLaporan = getCached('cache_overview');
+
+    if (cachedSiswa && cachedLaporan) {
+      renderOverview(cachedSiswa, cachedLaporan); // instan dari cache
+    } else {
+      showOverviewSkeleton();
+    }
+
+    // Selalu fetch data terbaru di background, lalu re-render + simpan cache
+    const [siswaRes, laporanRes] = await Promise.all([
+      apiPost('getSiswaList', { token }),
+      apiPost('getLaporan', { token, tanggal_mulai: today, tanggal_selesai: today }),
+    ]);
+
+    if (siswaRes.ok) setCached('cache_siswa_list', siswaRes);
+    if (laporanRes.ok) setCached('cache_overview', laporanRes);
+
+    renderOverview(siswaRes, laporanRes);
   }
 
   // ===== CHARTS =====
@@ -1262,6 +1303,10 @@
       clearSession();
       window.location.href = 'index.html';
     });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
   }
 
   (async function init() {

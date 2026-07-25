@@ -31,6 +31,61 @@ async function apiPost(action, data = {}) {
   return res.json();
 }
 
+// ===== CACHING (BARU: mempercepat loading berulang) =====
+// Data hasil apiPost disimpan di localStorage selama `duration` ms, jadi
+// saat halaman dibuka lagi, data tampil instan sambil update di background.
+const CACHE_DURATIONS = {
+  cache_overview: 5 * 60 * 1000,        // 5 menit
+  cache_siswa_list: 30 * 60 * 1000,     // 30 menit
+  cache_kelas_list: 60 * 60 * 1000,     // 1 jam
+};
+
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, timestamp } = JSON.parse(raw);
+    const duration = CACHE_DURATIONS[key] || 5 * 60 * 1000;
+    if (Date.now() - timestamp > duration) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+function setCached(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (err) {
+    // localStorage penuh/disabled -- abaikan, tidak fatal
+  }
+}
+
+function clearAllCache() {
+  Object.keys(CACHE_DURATIONS).forEach(k => localStorage.removeItem(k));
+}
+
+/**
+ * apiPost dengan cache: kalau ada data cache yang masih valid, dikembalikan
+ * langsung (instan), lalu tetap fetch data terbaru di background dan
+ * panggil onFresh(res) begitu selesai supaya UI bisa update diam-diam.
+ */
+async function apiPostCached(action, data, cacheKey, onFresh) {
+  const cached = cacheKey ? getCached(cacheKey) : null;
+
+  const freshPromise = apiPost(action, data).then(res => {
+    if (res.ok && cacheKey) setCached(cacheKey, res);
+    if (onFresh) onFresh(res);
+    return res;
+  });
+
+  if (cached) return cached;
+  return freshPromise;
+}
+
 function saveSession(token, role, nama) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(ROLE_KEY, role);
@@ -53,6 +108,7 @@ function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(NAMA_KEY);
+  clearAllCache();
 }
 
 /**

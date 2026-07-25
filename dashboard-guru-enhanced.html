@@ -161,6 +161,20 @@
   .badge-success { background: var(--success-bg); color: var(--success); }
   .badge-danger { background: var(--danger-bg); color: var(--danger); }
   .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-purple { background: var(--accent-purple-light); color: var(--accent-purple); }
+  .badge-idle { background: var(--bg); color: var(--ink-faint); border: 1px solid var(--border); }
+
+  .status-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .status-btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+    padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .status-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .status-btn.active-hadir { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  .status-btn.active-izin { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .status-btn.active-sakit { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+  .status-btn.active-alfa { background: var(--accent-purple-light); color: var(--accent-purple); border-color: var(--accent-purple); }
 
   /* ===== FILTER & PAGINATION ===== */
   .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -278,6 +292,7 @@
   <div class="brand">📋 Absensi Digital</div>
   <button class="nav-item active" data-view="overview" onclick="switchView('overview')">📊 Dashboard</button>
   <button class="nav-item" data-view="siswa" onclick="switchView('siswa')">👥 Data Siswa</button>
+  <button class="nav-item" data-view="kehadiran" onclick="switchView('kehadiran')">✅ Tandai Kehadiran</button>
   <button class="nav-item" data-view="laporan" onclick="switchView('laporan')">📑 Laporan</button>
   <a class="nav-item" href="admin.html">🔐 Kelola Akun Admin</a>
   <div class="sidebar-footer">
@@ -452,6 +467,39 @@
     </div>
   </div>
 
+  <!-- ===== TANDAI KEHADIRAN ===== -->
+  <div id="view-kehadiran" class="hidden">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h2>Tandai Kehadiran</h2>
+        <p>Tandai Izin/Sakit/Alfa untuk siswa yang tidak check-in sendiri, atau koreksi status yang salah</p>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="filter-row">
+        <input type="date" id="khTanggal" />
+        <select id="khMapel">
+          <option value="TIK">TIK</option>
+          <option value="KKA">KKA</option>
+        </select>
+        <select id="khKelas">
+          <option value="">Semua Kelas</option>
+        </select>
+        <button class="btn-primary" onclick="loadKehadiran()">🔍 Tampilkan</button>
+      </div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">
+        Siswa yang belum check-in sendiri tampil dengan status <span class="badge badge-idle">Belum ditandai</span>.
+        Klik salah satu tombol status untuk mencatatnya.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nama</th><th>Kelas</th><th>Status Saat Ini</th><th>Tandai Sebagai</th></tr></thead>
+          <tbody id="tblKehadiran"><tr class="empty-row"><td colspan="4">Pilih tanggal &amp; mapel lalu klik Tampilkan</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== LAPORAN ===== -->
   <div id="view-laporan" class="hidden">
     <div class="page-header">
@@ -528,7 +576,7 @@
   }
 
   function switchView(view) {
-    ['overview','siswa','laporan'].forEach((v) => {
+    ['overview','siswa','kehadiran','laporan'].forEach((v) => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
       document.querySelector(`.nav-item[data-view="${v}"]`).classList.toggle('active', v === view);
     });
@@ -538,7 +586,22 @@
       if (!document.getElementById('fltMulai').value) document.getElementById('fltMulai').value = today;
       if (!document.getElementById('fltSelesai').value) document.getElementById('fltSelesai').value = today;
     }
+    if (view === 'kehadiran') {
+      const today = new Date().toISOString().slice(0,10);
+      if (!document.getElementById('khTanggal').value) document.getElementById('khTanggal').value = today;
+      populateKelasFilterKehadiran();
+      if (siswaCache.length === 0) loadSiswa().then(populateKelasFilterKehadiran);
+    }
     closeSidebar();
+  }
+
+  function populateKelasFilterKehadiran() {
+    const select = document.getElementById('khKelas');
+    const current = select.value;
+    const kelasUnik = Array.from(new Set(siswaCache.map(s => String(s.kelas)).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id'));
+    select.innerHTML = '<option value="">Semua Kelas</option>' +
+      kelasUnik.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if (kelasUnik.includes(current)) select.value = current;
   }
 
   function toggleSidebar() {
@@ -1057,6 +1120,79 @@
   }
 
   // ===== LAPORAN =====
+  function statusBadgeClass(status) {
+    if (status === 'Hadir') return 'badge-success';
+    if (status === 'Izin') return 'badge-amber';
+    if (status === 'Sakit') return 'badge-danger';
+    if (status === 'Alfa') return 'badge-purple';
+    return 'badge-idle';
+  }
+
+  let kehadiranCache = [];
+
+  async function loadKehadiran() {
+    const tanggal = document.getElementById('khTanggal').value;
+    const mapel = document.getElementById('khMapel').value;
+    const kelas = document.getElementById('khKelas').value;
+    if (!tanggal) { showToast('Pilih tanggal dulu', 'error'); return; }
+
+    document.getElementById('tblKehadiran').innerHTML = '<tr class="empty-row"><td colspan="4">Memuat...</td></tr>';
+    try {
+      const res = await apiPost('getStatusHarian', { token: getToken(), tanggal, mapel, kelas });
+      if (!res.ok) {
+        document.getElementById('tblKehadiran').innerHTML =
+          `<tr class="empty-row"><td colspan="4">Gagal memuat: ${escapeHtml(res.error || 'terjadi kesalahan')}</td></tr>`;
+        showToast(res.error || 'Gagal memuat data', 'error');
+        return;
+      }
+      kehadiranCache = res.data;
+      renderKehadiranTable();
+    } catch (err) {
+      document.getElementById('tblKehadiran').innerHTML =
+        `<tr class="empty-row"><td colspan="4">Gagal terhubung ke server: ${escapeHtml(err.message)}</td></tr>`;
+      showToast('Gagal terhubung ke server', 'error');
+    }
+  }
+
+  function renderKehadiranTable() {
+    const tbody = document.getElementById('tblKehadiran');
+    if (kehadiranCache.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Tidak ada siswa untuk filter ini</td></tr>';
+      return;
+    }
+    const STATUSES = ['Hadir', 'Izin', 'Sakit', 'Alfa'];
+    tbody.innerHTML = kehadiranCache.map(s => `
+      <tr>
+        <td>${escapeHtml(s.nama)}</td>
+        <td>${escapeHtml(s.kelas)}</td>
+        <td><span class="badge ${statusBadgeClass(s.status)}">${escapeHtml(s.status || 'Belum ditandai')}</span></td>
+        <td>
+          <div class="status-actions">
+            ${STATUSES.map(st => `
+              <button type="button" class="status-btn ${s.status === st ? 'active-' + st.toLowerCase() : ''}"
+                onclick="setStatus('${s.siswa_id}','${st}')">${st}</button>
+            `).join('')}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function setStatus(siswaId, status) {
+    const tanggal = document.getElementById('khTanggal').value;
+    const mapel = document.getElementById('khMapel').value;
+    try {
+      const res = await apiPost('setAbsensiStatus', { token: getToken(), siswa_id: siswaId, mapel, tanggal, status });
+      if (!res.ok) { showToast(res.error || 'Gagal menyimpan status', 'error'); return; }
+      const item = kehadiranCache.find(s => String(s.siswa_id) === String(siswaId));
+      if (item) item.status = status;
+      renderKehadiranTable();
+      showToast(`Status disimpan: ${status}`, 'success');
+    } catch (err) {
+      showToast('Gagal terhubung ke server', 'error');
+    }
+  }
+
   async function loadLaporan() {
     const params = {
       token: getToken(),
@@ -1098,7 +1234,7 @@
       <tr>
         <td class="mono">${escapeHtml(r.tanggal)}</td><td class="mono">${escapeHtml(r.waktu)}</td>
         <td>${escapeHtml(r.nama_siswa)}</td><td>${escapeHtml(r.kelas)}</td><td>${escapeHtml(r.mapel)}</td>
-        <td><span class="badge badge-success">${escapeHtml(r.status)}</span></td>
+        <td><span class="badge ${statusBadgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
       </tr>
     `).join('') : '<tr class="empty-row"><td colspan="6">Tidak ada data untuk filter ini</td></tr>';
 

@@ -26,6 +26,7 @@ web/
   index.html          -> halaman login (tab Guru / Siswa)
   absen-siswa.html    -> layar check-in siswa (jam digital + tombol TIK/KKA)
   dashboard-guru.html -> dashboard guru (overview, CRUD siswa, laporan + export CSV)
+  admin.html          -> kelola akun Guru/Admin (tambah, edit, reset password, hapus)
   config.js           -> konfigurasi URL API + helper fetch
   style.css           -> design token & style bersama semua halaman
 ```
@@ -50,7 +51,7 @@ web/
 
 | Role | Username/NIS | Password  |
 |------|--------------|-----------|
-| Guru |              |           |
+| Guru | admin        | admin123  |
 
 Siswa belum ada akun bawaan — tambahkan lewat Dashboard Guru > Data Siswa.
 
@@ -59,6 +60,25 @@ Siswa belum ada akun bawaan — tambahkan lewat Dashboard Guru > Data Siswa.
 - Siswa hanya bisa check-in **1 kali per mata pelajaran per hari** (TIK dan KKA dihitung terpisah). Validasi dilakukan di server (`Code.gs`) dengan `LockService` untuk mencegah duplikasi saat ada request bersamaan — bukan hanya validasi di sisi frontend, karena frontend bisa dimanipulasi.
 - Session berbasis token (bukan cookie), berlaku 12 jam, disimpan di Sheet `Sessions` dan divalidasi di setiap request yang butuh login.
 - Password di-hash SHA-256 sebelum disimpan.
+
+## Tandai Kehadiran Manual (Izin/Sakit/Alfa)
+
+Siswa hanya bisa mencatat status **Hadir** lewat check-in sendiri (`absen-siswa.html`). Untuk Izin, Sakit, atau Alfa — atau mengoreksi status yang salah — guru menandainya lewat halaman **Dashboard Guru > Tandai Kehadiran**:
+
+- Pilih tanggal, mata pelajaran (TIK/KKA), dan opsional filter kelas.
+- Tabel menampilkan seluruh siswa di kelas tsb beserta status saat ini (`Belum ditandai` kalau belum ada catatan sama sekali).
+- Klik salah satu tombol Hadir/Izin/Sakit/Alfa untuk menyimpan — kalau siswa sudah check-in sendiri, statusnya akan DIGANTI (bukan duplikat baris).
+- Backend: action `getStatusHarian` (baca) dan `setAbsensiStatus` (tulis), keduanya role guru, terkunci dengan `LockService` yang sama seperti check-in siswa supaya tidak balapan.
+
+## Manajemen Akun Admin/Guru
+
+Halaman `web/admin.html` (link tersedia di sidebar dashboard guru, "Kelola Akun Admin") dipakai untuk mengelola akun Guru/Admin -- yang sebelumnya cuma bisa dibuat sekali lewat `setupSheets()` atau edit manual di Sheet.
+
+- **Login terpisah**: `admin.html` punya form login sendiri (memakai action `loginGuru` yang sama), jadi tetap butuh username+password akun guru untuk masuk.
+- **Tambah / edit / hapus akun**: guru yang sedang login bisa menambah akun admin baru, mengubah username/nama akun lain, atau menghapusnya. Tidak bisa menghapus akun sendiri (mencegah kunci-diri-sendiri) dan tidak bisa menghapus admin terakhir yang tersisa.
+- **Reset password akun lain**: tidak butuh password lama -- ini wewenang admin yang sudah login, sama seperti guru mereset password siswa.
+- **Ganti password akun sendiri**: WAJIB konfirmasi password lama dulu sebelum bisa diganti, supaya token/sesi yang bocor atau lupa logout di komputer bersama tidak otomatis bisa mengambil alih akun.
+- **Hashing**: semua password (guru maupun siswa) memakai skema yang sama -- SHA-256 + salt unik per akun (format `salt:hash`), tidak pernah disimpan dalam bentuk teks polos. Lihat `makePasswordHash()`/`verifyPassword()` di `Code.gs`.
 
 ## Batasan yang Perlu Diketahui (jangan diabaikan)
 

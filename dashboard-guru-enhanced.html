@@ -186,6 +186,15 @@
   .status-btn.active-sakit { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
   .status-btn.active-alfa { background: var(--accent-purple-light); color: var(--accent-purple); border-color: var(--accent-purple); }
 
+  .bulk-status-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 10px 12px; margin-bottom: 14px;
+  }
+  .bulk-status-label { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .bulk-status-row .status-btn { padding: 6px 12px; }
+  .bulk-status-row .status-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
   /* ===== FILTER & PAGINATION ===== */
   .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .filter-row input, .filter-row select { width: auto; min-width: 140px; }
@@ -501,6 +510,15 @@
         Siswa yang belum check-in sendiri tampil dengan status <span class="badge badge-idle">Belum ditandai</span>.
         Klik salah satu tombol status untuk mencatatnya.
       </p>
+      <div class="bulk-status-row" id="bulkStatusRow" style="display:none;">
+        <span class="bulk-status-label">Tandai Semua:</span>
+        <div class="status-actions">
+          <button type="button" class="status-btn" onclick="setStatusBulk('Hadir')">Hadir</button>
+          <button type="button" class="status-btn" onclick="setStatusBulk('Izin')">Izin</button>
+          <button type="button" class="status-btn" onclick="setStatusBulk('Sakit')">Sakit</button>
+          <button type="button" class="status-btn" onclick="setStatusBulk('Alfa')">Alfa</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Nama</th><th>Kelas</th><th>Status Saat Ini</th><th>Tandai Sebagai</th></tr></thead>
@@ -695,7 +713,7 @@
 
       renderAttendanceChart(allData);   // BARU: pakai data 7 hari, bukan cuma hari ini
       renderStatusChart(todayData);
-      renderLeaderboard(todayData);
+      renderLeaderboard(todayData, siswaRes.ok ? siswaRes.data : []);
 
       const tbody = document.getElementById('tblAktivitas');
       const recent = todayData.slice(0, 8);
@@ -823,17 +841,41 @@
     `;
   }
 
-  function renderLeaderboard(data) {
-    // Kelompokkan siswa per kelas dari data laporan
-    const kelasStat = {};
-    data.forEach(r => {
-      if (!kelasStat[r.kelas]) kelasStat[r.kelas] = 0;
-      kelasStat[r.kelas]++;
+  // Jumlah mapel yang wajib diabsen per siswa per hari (TIK & KKA) -- dipakai
+  // sebagai penyebut saat menghitung persentase kehadiran per kelas.
+  const MAPEL_COUNT_FE = 2;
+
+  function renderLeaderboard(data, siswaRoster) {
+    // PERUBAHAN: sebelumnya leaderboard cuma menjumlah SEMUA baris Absensi
+    // per kelas (apa pun statusnya), jadi kelas dengan siswa lebih banyak
+    // otomatis unggul meski persentase kehadirannya lebih rendah. Sekarang
+    // dihitung sebagai PERSENTASE: (jumlah status "Hadir" hari ini) dibagi
+    // (jumlah siswa di kelas itu x jumlah mapel wajib), supaya kelas kecil
+    // dan kelas besar bisa dibandingkan secara adil.
+    const totalSiswaPerKelas = {};
+    (siswaRoster || []).forEach(s => {
+      totalSiswaPerKelas[s.kelas] = (totalSiswaPerKelas[s.kelas] || 0) + 1;
     });
 
-    const sorted = Object.entries(kelasStat)
-      .map(([kelas, count]) => ({ kelas, count }))
-      .sort((a, b) => b.count - a.count);
+    const hadirPerKelas = {};
+    data.forEach(r => {
+      if (r.status !== 'Hadir') return; // cuma status Hadir yang dihitung "kehadiran"
+      hadirPerKelas[r.kelas] = (hadirPerKelas[r.kelas] || 0) + 1;
+    });
+
+    const kelasList = Object.keys(totalSiswaPerKelas).length
+      ? Object.keys(totalSiswaPerKelas)
+      : Object.keys(hadirPerKelas); // fallback kalau roster siswa belum termuat
+
+    const sorted = kelasList
+      .map(kelas => {
+        const totalSiswa = totalSiswaPerKelas[kelas] || 0;
+        const totalSlot = totalSiswa * MAPEL_COUNT_FE;
+        const hadir = hadirPerKelas[kelas] || 0;
+        const persen = totalSlot > 0 ? Math.round((hadir / totalSlot) * 100) : 0;
+        return { kelas, hadir, totalSiswa, totalSlot, persen };
+      })
+      .sort((a, b) => b.persen - a.persen || b.hadir - a.hadir);
 
     const html = sorted.map((item, idx) => {
       let rankClass = 'other';
@@ -847,11 +889,11 @@
           <div class="rank-badge ${rankClass}">${medal}</div>
           <div class="leaderboard-info">
             <div class="leaderboard-kelas">${escapeHtml(item.kelas)}</div>
-            <div class="leaderboard-stat">${item.count} check-in hari ini</div>
+            <div class="leaderboard-stat">${item.hadir} dari ${item.totalSlot} slot hadir (${item.totalSiswa} siswa × ${MAPEL_COUNT_FE} mapel)</div>
           </div>
           <div class="leaderboard-count">
-            <span class="num">${item.count}</span>
-            <span class="label">hadir</span>
+            <span class="num">${item.persen}%</span>
+            <span class="label">kehadiran</span>
           </div>
         </li>
       `;
@@ -1187,6 +1229,7 @@
     if (!tanggal) { showToast('Pilih tanggal dulu', 'error'); return; }
 
     document.getElementById('tblKehadiran').innerHTML = '<tr class="empty-row"><td colspan="4">Memuat...</td></tr>';
+    document.getElementById('bulkStatusRow').style.display = 'none';
     try {
       const res = await apiPost('getStatusHarian', { token: getToken(), tanggal, mapel, kelas });
       if (!res.ok) {
@@ -1197,6 +1240,7 @@
       }
       kehadiranCache = res.data;
       renderKehadiranTable();
+      document.getElementById('bulkStatusRow').style.display = kehadiranCache.length ? 'flex' : 'none';
     } catch (err) {
       document.getElementById('tblKehadiran').innerHTML =
         `<tr class="empty-row"><td colspan="4">Gagal terhubung ke server: ${escapeHtml(err.message)}</td></tr>`;
@@ -1240,6 +1284,29 @@
       showToast(`Status disimpan: ${status}`, 'success');
     } catch (err) {
       showToast('Gagal terhubung ke server', 'error');
+    }
+  }
+
+  async function setStatusBulk(status) {
+    if (kehadiranCache.length === 0) return;
+    const tanggal = document.getElementById('khTanggal').value;
+    const mapel = document.getElementById('khMapel').value;
+    const konfirmasi = confirm(`Tandai SEMUA ${kehadiranCache.length} siswa yang tampil sebagai "${status}"?\n\nStatus yang sudah tercatat (termasuk check-in siswa sendiri) akan DIGANTI.`);
+    if (!konfirmasi) return;
+
+    const bulkBtns = document.querySelectorAll('#bulkStatusRow .status-btn');
+    bulkBtns.forEach((b) => (b.disabled = true));
+    try {
+      const siswaIds = kehadiranCache.map((s) => s.siswa_id);
+      const res = await apiPost('setAbsensiStatusBulk', { token: getToken(), siswa_ids: siswaIds, mapel, tanggal, status });
+      if (!res.ok) { showToast(res.error || 'Gagal menyimpan status massal', 'error'); return; }
+      kehadiranCache.forEach((s) => { s.status = status; });
+      renderKehadiranTable();
+      showToast(res.message || `${kehadiranCache.length} siswa ditandai ${status}`, 'success');
+    } catch (err) {
+      showToast('Gagal terhubung ke server', 'error');
+    } finally {
+      bulkBtns.forEach((b) => (b.disabled = false));
     }
   }
 

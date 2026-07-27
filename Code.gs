@@ -120,6 +120,11 @@ function doPost(e) {
           setAbsensiStatus(session, body.siswa_id, body.mapel, body.tanggal, body.status)
         );
         break;
+      case 'setAbsensiStatusBulk':
+        result = requireRole(body.token, 'guru', (session) =>
+          setAbsensiStatusBulk(session, body.siswa_ids, body.mapel, body.tanggal, body.status)
+        );
+        break;
       case 'getLaporan':
         result = requireRole(body.token, 'guru', () =>
           getLaporan(body.tanggal_mulai, body.tanggal_selesai, body.kelas, body.mapel)
@@ -466,6 +471,74 @@ function setAbsensiStatus(session, siswaId, mapel, tanggal, status) {
       sheet.appendRow([newId, siswaId, siswaData.nama, siswaData.kelas, mapel, tanggalNorm, '', status]);
     }
     return { ok: true, message: 'Status ' + siswaData.nama + ' (' + mapel + ') diset menjadi ' + status };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Versi massal dari setAbsensiStatus() -- dipakai tombol "Tandai Semua" di
+ * Dashboard Guru > Tandai Kehadiran, supaya guru bisa menandai satu status
+ * yang sama (mis. semua Hadir, atau semua Alfa kalau jam pelajaran kosong)
+ * untuk seluruh siswa yang sedang tampil di tabel, tanpa klik satu per satu.
+ *
+ * Beda dari memanggil setAbsensiStatus() berkali-kali dari client: di sini
+ * LockService HANYA diambil SEKALI untuk seluruh batch (bukan per siswa),
+ * supaya lebih cepat dan tidak ada siswa lain yang menyelinap masuk baris
+ * Absensi di tengah-tengah proses. Siswa yang gagal (mis. ID tidak valid)
+ * tidak menggagalkan siswa lain -- dikembalikan di array `failed`.
+ */
+function setAbsensiStatusBulk(session, siswaIds, mapel, tanggal, status) {
+  if (!Array.isArray(siswaIds) || siswaIds.length === 0) {
+    return { ok: false, error: 'Tidak ada siswa yang dipilih' };
+  }
+  if (!mapel || !tanggal || !status) {
+    return { ok: false, error: 'Data tidak lengkap' };
+  }
+  if (MAPEL_LIST.indexOf(mapel) === -1) {
+    return { ok: false, error: 'Mata pelajaran tidak valid' };
+  }
+  if (STATUS_LIST.indexOf(status) === -1) {
+    return { ok: false, error: 'Status tidak valid. Pilih Hadir, Izin, Sakit, atau Alfa.' };
+  }
+  const tanggalNorm = normalizeTanggal(tanggal);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggalNorm)) {
+    return { ok: false, error: 'Format tanggal tidak valid' };
+  }
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch (e) {
+    return { ok: false, error: 'Server sibuk, silakan coba lagi.' };
+  }
+
+  try {
+    const sheet = getSheet(SHEET_ABSENSI);
+    let updated = 0;
+    const failed = [];
+    siswaIds.forEach((siswaId) => {
+      const siswaData = getSiswaById(siswaId);
+      if (!siswaData) {
+        failed.push(String(siswaId));
+        return;
+      }
+      const existing = findAbsensiRow(sheet, siswaId, mapel, tanggalNorm);
+      if (existing) {
+        sheet.getRange(existing.row, 8).setValue(status); // kolom H = status
+      } else {
+        const newId = Utilities.getUuid();
+        sheet.appendRow([newId, siswaId, siswaData.nama, siswaData.kelas, mapel, tanggalNorm, '', status]);
+      }
+      updated++;
+    });
+    return {
+      ok: true,
+      updated: updated,
+      failed: failed,
+      status: status,
+      message: updated + ' siswa ditandai ' + status + (failed.length ? (', ' + failed.length + ' gagal') : ''),
+    };
   } finally {
     lock.releaseLock();
   }

@@ -68,7 +68,8 @@ Siswa hanya bisa mencatat status **Hadir** lewat check-in sendiri (`absen-siswa.
 - Pilih tanggal, mata pelajaran (TIK/KKA), dan opsional filter kelas.
 - Tabel menampilkan seluruh siswa di kelas tsb beserta status saat ini (`Belum ditandai` kalau belum ada catatan sama sekali).
 - Klik salah satu tombol Hadir/Izin/Sakit/Alfa untuk menyimpan — kalau siswa sudah check-in sendiri, statusnya akan DIGANTI (bukan duplikat baris).
-- Backend: action `getStatusHarian` (baca) dan `setAbsensiStatus` (tulis), keduanya role guru, terkunci dengan `LockService` yang sama seperti check-in siswa supaya tidak balapan.
+- **Tandai Semua**: tombol `Hadir`/`Izin`/`Sakit`/`Alfa` di atas tabel menandai SEMUA siswa yang sedang tampil (sesuai filter tanggal/mapel/kelas) sekaligus dengan satu status yang sama — berguna misal saat jam pelajaran kosong (tandai semua Alfa) atau study tour (tandai semua Izin). Ada dialog konfirmasi sebelum eksekusi karena akan menimpa status yang sudah ada.
+- Backend: action `getStatusHarian` (baca), `setAbsensiStatus` (tulis satu siswa), dan `setAbsensiStatusBulk` (tulis massal, dipakai tombol Tandai Semua) — semuanya role guru, terkunci dengan `LockService` yang sama seperti check-in siswa supaya tidak balapan (untuk versi bulk, lock hanya diambil sekali untuk seluruh batch).
 
 ## Manajemen Akun Admin/Guru
 

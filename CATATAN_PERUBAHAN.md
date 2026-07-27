@@ -28,4 +28,4 @@ Sebelumnya, `loadOverview()` mengambil data laporan dengan `tanggal_mulai = tang
 ## Catatan penting
 - Data absensi tetap selalu **fresh dari server** — yang di-cache hanya file statis dan ringkasan overview (auto-expire 5 menit)
 - Kalau ingin memaksa refresh data, jalankan `clearAllCache()` di browser console, atau logout-login
-- **Leaderboard "Top Kelas"** saat ini menghitung jumlah check-in mentah per kelas, bukan persentase kehadiran — kelas dengan siswa lebih banyak otomatis unggul. Ini bukan bug, tapi kalau mau dibuat berbasis persentase (lebih adil), beri tahu saya.
+- **Leaderboard "Top Kelas"** sekarang menghitung **persentase kehadiran** per kelas (jumlah status Hadir hari ini ÷ (jumlah siswa di kelas × 2 mapel) × 100%), bukan lagi jumlah check-in mentah — jadi kelas dengan siswa lebih sedikit tidak lagi otomatis kalah dari kelas besar.

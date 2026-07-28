@@ -746,13 +746,31 @@
     // FIX: ambil rentang 7 hari (bukan cuma hari ini) supaya chart "Attendance
     // Trend (7 Hari Terakhir)" benar-benar berisi data 7 hari, bukan 1 batang
     // terisi + 6 batang kosong.
-    const [siswaRes, laporanRes] = await Promise.all([
-      apiPost('getSiswaList', { token }),
-      apiPost('getLaporan', { token, tanggal_mulai: startDate, tanggal_selesai: today }),
-    ]);
+    //
+    // PERFORMA: dulu ini 2 request 'exec' terpisah (getSiswaList +
+    // getLaporan), DITAMBAH 1 request 'exec' lagi dari checkSession di
+    // guardPage() sebelum init() sampai sini -- total 3 round-trip ke Apps
+    // Script, masing-masing kena overhead redirect 302 ke
+    // content.googleusercontent.com (300ms-2.5s+ per request, lihat DevTools
+    // Network). Sekarang digabung jadi SATU action 'getDashboardInit' yang
+    // sekaligus memvalidasi token (lewat requireRole di backend) DAN
+    // mengembalikan data siswa + laporan. checkSession terpisah di
+    // guardPage() tidak dipanggil lagi di halaman ini.
+    const initRes = await apiPost('getDashboardInit', {
+      token, tanggal_mulai: startDate, tanggal_selesai: today,
+    });
 
-    if (siswaRes.ok) setCached('cache_siswa_list', siswaRes);
-    if (laporanRes.ok) setCached('cache_overview_v2', laporanRes);
+    if (!initRes.ok) {
+      clearSession();
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const siswaRes = { ok: true, data: initRes.siswa };
+    const laporanRes = { ok: true, data: initRes.laporan };
+
+    setCached('cache_siswa_list', siswaRes);
+    setCached('cache_overview_v2', laporanRes);
 
     renderOverview(siswaRes, laporanRes);
   }
@@ -1386,8 +1404,17 @@
   }
 
   (async function init() {
-    const session = await guardPage('guru');
-    if (!session) return;
+    // PERFORMA: tidak lagi memanggil guardPage()/checkSession di sini --
+    // itu request 'exec' terpisah yang cuma memvalidasi token tanpa
+    // mengambil data apa pun. Cek lokal dulu (token ada di localStorage),
+    // lalu validasi ASLI terjadi sekali di dalam getDashboardInit()
+    // (loadOverview -> requireRole di backend). Kalau token invalid/expired,
+    // loadOverview() sendiri yang redirect ke index.html.
+    const token = getToken();
+    if (!token) {
+      window.location.href = 'index.html';
+      return;
+    }
     document.getElementById('namaGuru').textContent = getNama();
     updateClock();
     await loadOverview();

@@ -194,6 +194,31 @@
   .bulk-status-label { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .bulk-status-row .status-btn { padding: 6px 12px; }
   .bulk-status-row .status-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-btn-clear { color: var(--danger); border-color: var(--danger-bg); }
+  .status-btn-clear:hover { background: var(--danger-bg); border-color: var(--danger); }
+
+  .status-check-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .status-check {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+    padding: 4px 9px 4px 7px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s ease; user-select: none;
+  }
+  .status-check input[type="checkbox"] { margin: 0; cursor: pointer; }
+  .status-check:hover { border-color: var(--primary); }
+  .status-check.row-dirty { box-shadow: 0 0 0 2px rgba(0,0,0,0.03) inset; }
+  .status-check.check-hadir.is-checked { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  .status-check.check-izin.is-checked { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .status-check.check-sakit.is-checked { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+  .status-check.check-alfa.is-checked { background: var(--accent-purple-light); color: var(--accent-purple); border-color: var(--accent-purple); }
+
+  .save-kehadiran-row {
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+  .save-kehadiran-info { font-size: 13px; color: var(--ink-soft); }
+  .save-kehadiran-info.has-changes { color: var(--primary); font-weight: 600; }
+  #btnSimpanKehadiran:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ===== FILTER & PAGINATION ===== */
   .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -508,7 +533,7 @@
       </div>
       <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">
         Siswa yang belum check-in sendiri tampil dengan status <span class="badge badge-idle">Belum ditandai</span>.
-        Klik salah satu tombol status untuk mencatatnya.
+        Centang salah satu checkbox status per siswa, lalu klik <strong>Simpan Perubahan</strong> untuk menyimpannya.
       </p>
       <div class="bulk-status-row" id="bulkStatusRow" style="display:none;">
         <span class="bulk-status-label">Tandai Semua:</span>
@@ -517,6 +542,7 @@
           <button type="button" class="status-btn" onclick="setStatusBulk('Izin')">Izin</button>
           <button type="button" class="status-btn" onclick="setStatusBulk('Sakit')">Sakit</button>
           <button type="button" class="status-btn" onclick="setStatusBulk('Alfa')">Alfa</button>
+          <button type="button" class="status-btn status-btn-clear" onclick="uncheckAllKehadiran()">✕ Hapus Semua Tanda</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -524,6 +550,10 @@
           <thead><tr><th>Nama</th><th>Kelas</th><th>Status Saat Ini</th><th>Tandai Sebagai</th></tr></thead>
           <tbody id="tblKehadiran"><tr class="empty-row"><td colspan="4">Pilih tanggal &amp; mapel lalu klik Tampilkan</td></tr></tbody>
         </table>
+      </div>
+      <div class="save-kehadiran-row" id="saveKehadiranRow" style="display:none;">
+        <span class="save-kehadiran-info" id="saveKehadiranInfo">Belum ada perubahan</span>
+        <button type="button" class="btn-primary" id="btnSimpanKehadiran" onclick="simpanKehadiran()" disabled>💾 Simpan Perubahan</button>
       </div>
     </div>
   </div>
@@ -746,31 +776,13 @@
     // FIX: ambil rentang 7 hari (bukan cuma hari ini) supaya chart "Attendance
     // Trend (7 Hari Terakhir)" benar-benar berisi data 7 hari, bukan 1 batang
     // terisi + 6 batang kosong.
-    //
-    // PERFORMA: dulu ini 2 request 'exec' terpisah (getSiswaList +
-    // getLaporan), DITAMBAH 1 request 'exec' lagi dari checkSession di
-    // guardPage() sebelum init() sampai sini -- total 3 round-trip ke Apps
-    // Script, masing-masing kena overhead redirect 302 ke
-    // content.googleusercontent.com (300ms-2.5s+ per request, lihat DevTools
-    // Network). Sekarang digabung jadi SATU action 'getDashboardInit' yang
-    // sekaligus memvalidasi token (lewat requireRole di backend) DAN
-    // mengembalikan data siswa + laporan. checkSession terpisah di
-    // guardPage() tidak dipanggil lagi di halaman ini.
-    const initRes = await apiPost('getDashboardInit', {
-      token, tanggal_mulai: startDate, tanggal_selesai: today,
-    });
+    const [siswaRes, laporanRes] = await Promise.all([
+      apiPost('getSiswaList', { token }),
+      apiPost('getLaporan', { token, tanggal_mulai: startDate, tanggal_selesai: today }),
+    ]);
 
-    if (!initRes.ok) {
-      clearSession();
-      window.location.href = 'index.html';
-      return;
-    }
-
-    const siswaRes = { ok: true, data: initRes.siswa };
-    const laporanRes = { ok: true, data: initRes.laporan };
-
-    setCached('cache_siswa_list', siswaRes);
-    setCached('cache_overview_v2', laporanRes);
+    if (siswaRes.ok) setCached('cache_siswa_list', siswaRes);
+    if (laporanRes.ok) setCached('cache_overview_v2', laporanRes);
 
     renderOverview(siswaRes, laporanRes);
   }
@@ -1256,9 +1268,11 @@
         showToast(res.error || 'Gagal memuat data', 'error');
         return;
       }
-      kehadiranCache = res.data;
+      kehadiranCache = res.data.map(s => ({ ...s, pendingStatus: s.status || null }));
       renderKehadiranTable();
       document.getElementById('bulkStatusRow').style.display = kehadiranCache.length ? 'flex' : 'none';
+      document.getElementById('saveKehadiranRow').style.display = kehadiranCache.length ? 'flex' : 'none';
+      updateSaveKehadiranBar();
     } catch (err) {
       document.getElementById('tblKehadiran').innerHTML =
         `<tr class="empty-row"><td colspan="4">Gagal terhubung ke server: ${escapeHtml(err.message)}</td></tr>`;
@@ -1266,65 +1280,118 @@
     }
   }
 
+  const KEHADIRAN_STATUSES = ['Hadir', 'Izin', 'Sakit', 'Alfa'];
+
   function renderKehadiranTable() {
     const tbody = document.getElementById('tblKehadiran');
     if (kehadiranCache.length === 0) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Tidak ada siswa untuk filter ini</td></tr>';
       return;
     }
-    const STATUSES = ['Hadir', 'Izin', 'Sakit', 'Alfa'];
-    tbody.innerHTML = kehadiranCache.map(s => `
+    tbody.innerHTML = kehadiranCache.map(s => {
+      const isDirty = (s.pendingStatus || null) !== (s.status || null);
+      return `
       <tr>
         <td>${escapeHtml(s.nama)}</td>
         <td>${escapeHtml(s.kelas)}</td>
         <td><span class="badge ${statusBadgeClass(s.status)}">${escapeHtml(s.status || 'Belum ditandai')}</span></td>
         <td>
-          <div class="status-actions">
-            ${STATUSES.map(st => `
-              <button type="button" class="status-btn ${s.status === st ? 'active-' + st.toLowerCase() : ''}"
-                onclick="setStatus('${s.siswa_id}','${st}')">${st}</button>
+          <div class="status-check-group">
+            ${KEHADIRAN_STATUSES.map(st => `
+              <label class="status-check check-${st.toLowerCase()} ${s.pendingStatus === st ? 'is-checked' : ''} ${isDirty ? 'row-dirty' : ''}">
+                <input type="checkbox" ${s.pendingStatus === st ? 'checked' : ''}
+                  onchange="onKehadiranCheck('${s.siswa_id}','${st}', this.checked)" />
+                ${st}
+              </label>
             `).join('')}
           </div>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
   }
 
-  async function setStatus(siswaId, status) {
-    const tanggal = document.getElementById('khTanggal').value;
-    const mapel = document.getElementById('khMapel').value;
-    try {
-      const res = await apiPost('setAbsensiStatus', { token: getToken(), siswa_id: siswaId, mapel, tanggal, status });
-      if (!res.ok) { showToast(res.error || 'Gagal menyimpan status', 'error'); return; }
-      const item = kehadiranCache.find(s => String(s.siswa_id) === String(siswaId));
-      if (item) item.status = status;
-      renderKehadiranTable();
-      showToast(`Status disimpan: ${status}`, 'success');
-    } catch (err) {
-      showToast('Gagal terhubung ke server', 'error');
+  function onKehadiranCheck(siswaId, status, checked) {
+    const item = kehadiranCache.find(s => String(s.siswa_id) === String(siswaId));
+    if (!item) return;
+    item.pendingStatus = checked ? status : null;
+    renderKehadiranTable();
+    updateSaveKehadiranBar();
+  }
+
+  function setStatusBulk(status) {
+    if (kehadiranCache.length === 0) return;
+    kehadiranCache.forEach((s) => { s.pendingStatus = status; });
+    renderKehadiranTable();
+    updateSaveKehadiranBar();
+  }
+
+  function uncheckAllKehadiran() {
+    if (kehadiranCache.length === 0) return;
+    kehadiranCache.forEach((s) => { s.pendingStatus = null; });
+    renderKehadiranTable();
+    updateSaveKehadiranBar();
+  }
+
+  function updateSaveKehadiranBar() {
+    const info = document.getElementById('saveKehadiranInfo');
+    const btn = document.getElementById('btnSimpanKehadiran');
+    if (!info || !btn) return;
+    const changedCount = kehadiranCache.filter(s => (s.pendingStatus || null) !== (s.status || null)).length;
+    if (changedCount > 0) {
+      info.textContent = `${changedCount} perubahan belum disimpan`;
+      info.classList.add('has-changes');
+      btn.disabled = false;
+    } else {
+      info.textContent = 'Belum ada perubahan';
+      info.classList.remove('has-changes');
+      btn.disabled = true;
     }
   }
 
-  async function setStatusBulk(status) {
-    if (kehadiranCache.length === 0) return;
+  async function simpanKehadiran() {
     const tanggal = document.getElementById('khTanggal').value;
     const mapel = document.getElementById('khMapel').value;
-    const konfirmasi = confirm(`Tandai SEMUA ${kehadiranCache.length} siswa yang tampil sebagai "${status}"?\n\nStatus yang sudah tercatat (termasuk check-in siswa sendiri) akan DIGANTI.`);
-    if (!konfirmasi) return;
+    const changed = kehadiranCache.filter(s => (s.pendingStatus || null) !== (s.status || null) && s.pendingStatus);
+    if (changed.length === 0) { showToast('Tidak ada perubahan untuk disimpan', 'error'); return; }
 
-    const bulkBtns = document.querySelectorAll('#bulkStatusRow .status-btn');
-    bulkBtns.forEach((b) => (b.disabled = true));
+    const btn = document.getElementById('btnSimpanKehadiran');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    // Kelompokkan per status supaya bisa dikirim lewat setAbsensiStatusBulk
+    const groups = {};
+    changed.forEach((s) => {
+      if (!groups[s.pendingStatus]) groups[s.pendingStatus] = [];
+      groups[s.pendingStatus].push(s.siswa_id);
+    });
+
+    let gagal = 0;
     try {
-      const siswaIds = kehadiranCache.map((s) => s.siswa_id);
-      const res = await apiPost('setAbsensiStatusBulk', { token: getToken(), siswa_ids: siswaIds, mapel, tanggal, status });
-      if (!res.ok) { showToast(res.error || 'Gagal menyimpan status massal', 'error'); return; }
-      kehadiranCache.forEach((s) => { s.status = status; });
+      for (const status of Object.keys(groups)) {
+        const siswaIds = groups[status];
+        const res = await apiPost('setAbsensiStatusBulk', { token: getToken(), siswa_ids: siswaIds, mapel, tanggal, status });
+        if (!res.ok) {
+          gagal += siswaIds.length;
+          continue;
+        }
+        siswaIds.forEach((id) => {
+          const item = kehadiranCache.find(s => String(s.siswa_id) === String(id));
+          if (item) item.status = status;
+        });
+      }
       renderKehadiranTable();
-      showToast(res.message || `${kehadiranCache.length} siswa ditandai ${status}`, 'success');
+      updateSaveKehadiranBar();
+      if (gagal > 0) {
+        showToast(`Sebagian gagal disimpan (${gagal} siswa). Coba lagi.`, 'error');
+      } else {
+        showToast(`${changed.length} perubahan berhasil disimpan`, 'success');
+      }
     } catch (err) {
       showToast('Gagal terhubung ke server', 'error');
     } finally {
-      bulkBtns.forEach((b) => (b.disabled = false));
+      btn.textContent = '💾 Simpan Perubahan';
+      updateSaveKehadiranBar();
     }
   }
 
@@ -1404,17 +1471,8 @@
   }
 
   (async function init() {
-    // PERFORMA: tidak lagi memanggil guardPage()/checkSession di sini --
-    // itu request 'exec' terpisah yang cuma memvalidasi token tanpa
-    // mengambil data apa pun. Cek lokal dulu (token ada di localStorage),
-    // lalu validasi ASLI terjadi sekali di dalam getDashboardInit()
-    // (loadOverview -> requireRole di backend). Kalau token invalid/expired,
-    // loadOverview() sendiri yang redirect ke index.html.
-    const token = getToken();
-    if (!token) {
-      window.location.href = 'index.html';
-      return;
-    }
+    const session = await guardPage('guru');
+    if (!session) return;
     document.getElementById('namaGuru').textContent = getNama();
     updateClock();
     await loadOverview();

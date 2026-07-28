@@ -769,13 +769,6 @@
     const siswaRes = { ok: true, data: initRes.siswa };
     const laporanRes = { ok: true, data: initRes.laporan };
 
-    // PERFORMA: isi siswaCache di sini juga -- tanpa ini, saat guru pindah ke
-    // tab "Data Siswa" atau "Tandai Kehadiran", switchView() akan mengira
-    // belum ada data (siswaCache.length === 0) dan memanggil getSiswaList()
-    // LAGI lewat request 'exec' terpisah, padahal datanya sudah ada dari
-    // getDashboardInit barusan.
-    siswaCache = initRes.siswa;
-
     setCached('cache_siswa_list', siswaRes);
     setCached('cache_overview_v2', laporanRes);
 

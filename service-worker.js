@@ -3,7 +3,13 @@
 // API call ke Apps Script TIDAK di-cache di sini (biar data selalu fresh);
 // caching data API sudah ditangani lewat localStorage di config.js.
 
-const CACHE_NAME = 'absensi-static-v1';
+// PENTING: setiap kali file di STATIC_FILES berubah (dashboard-guru-enhanced.html,
+// config.js, dll), CACHE_NAME WAJIB diganti (mis. v1 -> v2). Tanpa ini, browser
+// yang sudah pernah membuka situs akan TERUS mendapat versi lama dari cache SW
+// selamanya, walaupun kode baru sudah live di Vercel -- activate() di bawah cuma
+// menghapus cache dengan nama BEDA dari CACHE_NAME saat ini, jadi kalau namanya
+// tidak berubah, SW menganggap tidak ada yang perlu di-refresh.
+const CACHE_NAME = 'absensi-static-v2';
 
 const STATIC_FILES = [
   'index.html',

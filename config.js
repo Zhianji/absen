@@ -1,5 +1,5 @@
 // ==== GANTI DENGAN URL WEB APP APPS SCRIPT KAMU (lihat apps-script/SETUP.md) ====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbywCmiYQvS4FAVERFpdYZoEzcNHHcRdb6nYjbY_tMxPPJoStJq-CcxPyduHIXFRSLWCaA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyADHTvQfarDt-9L7IMSfsG8PN4IbycX-1ZIA2CnMZ3RrKpw4kqHa8ei6TmGlijp-ng2w/exec';
 
 const TOKEN_KEY = 'absensi_token';
 const ROLE_KEY = 'absensi_role';
@@ -38,6 +38,8 @@ const CACHE_DURATIONS = {
   cache_overview_v2: 5 * 60 * 1000,        // 5 menit
   cache_siswa_list: 30 * 60 * 1000,     // 30 menit
   cache_kelas_list: 60 * 60 * 1000,     // 1 jam
+  cache_rekap_bulanan: 10 * 60 * 1000,  // 10 menit
+  cache_riwayat_siswa: 5 * 60 * 1000,   // 5 menit
 };
 
 function getCached(key) {

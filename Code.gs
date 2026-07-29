@@ -165,6 +165,21 @@ function doPost(e) {
       case 'changeSiswaPassword':
         result = requireRole(body.token, 'siswa', (session) => changeSiswaPassword(session, body.old_password, body.new_password));
         break;
+      case 'getRekapBulanan':
+        result = requireRole(body.token, 'guru', () =>
+          getRekapBulanan(body.bulan, body.tahun, body.kelas)
+        );
+        break;
+      case 'getRiwayatSiswa':
+        result = requireRole(body.token, 'siswa', (session) =>
+          getRiwayatSiswa(session, body.bulan, body.tahun)
+        );
+        break;
+      case 'getOverview':
+        result = requireRole(body.token, 'guru', () =>
+          getOverview(body.tanggal_mulai, body.tanggal_selesai)
+        );
+        break;
       default:
         result = { ok: false, error: 'Action tidak dikenal: ' + action };
     }
@@ -902,6 +917,308 @@ function getLaporan(tanggalMulai, tanggalSelesai, kelasFilter, mapelFilter) {
   }
   list.sort((a, b) => (a.tanggal + a.waktu < b.tanggal + b.waktu ? 1 : -1));
   return { ok: true, data: list };
+}
+
+/**
+ * getOverview: gabungan getSiswaList + getLaporan dalam 1 API call.
+ * Dipakai oleh dashboard guru untuk memuat semua data yang dibutuhkan
+ * sekaligus (statistik kartu, grafik tren 7 hari, pie chart, leaderboard,
+ * dan aktivitas terbaru) tanpa harus 2 round-trip ke Apps Script.
+ *
+ * Return: { ok, siswa: { ok, data: [...] }, laporan: { ok, data: [...] } }
+ */
+function getOverview(tanggalMulai, tanggalSelesai) {
+  const siswaRes = getSiswaList(null);  // semua kelas
+  const laporanRes = getLaporan(tanggalMulai, tanggalSelesai, null, null);
+  return {
+    ok: true,
+    siswa: siswaRes,
+    laporan: laporanRes
+  };
+}
+
+// ============ REKAP BULANAN (guru) ============
+/**
+ * Rekap kehadiran bulanan per siswa untuk satu bulan+tahun tertentu.
+ * Menghitung persentase kehadiran berdasarkan hari efektif (tanggal unik
+ * yang memiliki data absensi di bulan tersebut, per mapel).
+ *
+ * Return: {
+ *   ok, bulan, tahun, kelas_filter,
+ *   hari_efektif: { TIK: N, KKA: N },
+ *   ringkasan: { rata_rata, tertinggi: {nama, persen}, terendah: {nama, persen} },
+ *   data: [{ siswa_id, nama, kelas, per_mapel: { TIK: {hadir,izin,sakit,alfa,total,persen}, KKA: {...} },
+ *            total_hadir, total_hari, persen_total }]
+ * }
+ */
+function getRekapBulanan(bulan, tahun, kelasFilter) {
+  bulan = parseInt(bulan, 10);
+  tahun = parseInt(tahun, 10);
+  if (!bulan || bulan < 1 || bulan > 12 || !tahun) {
+    return { ok: false, error: 'Bulan (1-12) dan tahun wajib diisi' };
+  }
+
+  // Prefix tanggal untuk filter bulan: "yyyy-MM"
+  const bulanStr = String(bulan).padStart(2, '0');
+  const prefix = tahun + '-' + bulanStr;
+
+  // Baca siswa
+  const siswaRows = getSheet(SHEET_SISWA).getDataRange().getValues();
+  const siswaMap = {}; // id -> {nama, kelas, nis}
+  for (let i = 1; i < siswaRows.length; i++) {
+    const [id, nis, , nama, kelas] = siswaRows[i];
+    if (kelasFilter && kelas !== kelasFilter) continue;
+    siswaMap[id] = { nama: nama, kelas: kelas, nis: nis };
+  }
+
+  // Baca absensi bulan ini
+  const absensiRows = getSheet(SHEET_ABSENSI).getDataRange().getValues();
+  // Struktur: siswaId -> mapel -> { hadir, izin, sakit, alfa }
+  const rekapData = {};
+  // Track tanggal unik per mapel (untuk hitung hari efektif)
+  const tanggalUnikPerMapel = {};
+  MAPEL_LIST.forEach(function(m) { tanggalUnikPerMapel[m] = {}; });
+
+  for (let i = 1; i < absensiRows.length; i++) {
+    const [, siswaId, , kelas, mapel, tanggalRaw, , status] = absensiRows[i];
+    const tanggal = normalizeTanggal(tanggalRaw);
+    if (!tanggal.startsWith(prefix)) continue;
+    if (kelasFilter && kelas !== kelasFilter) continue;
+
+    // Track tanggal unik per mapel
+    if (tanggalUnikPerMapel[mapel]) {
+      tanggalUnikPerMapel[mapel][tanggal] = true;
+    }
+
+    // Hanya hitung siswa yang ada di roster (sesuai filter kelas)
+    if (!siswaMap[siswaId]) continue;
+
+    if (!rekapData[siswaId]) {
+      rekapData[siswaId] = {};
+      MAPEL_LIST.forEach(function(m) {
+        rekapData[siswaId][m] = { hadir: 0, izin: 0, sakit: 0, alfa: 0 };
+      });
+    }
+
+    const statusLower = String(status).toLowerCase();
+    if (rekapData[siswaId][mapel]) {
+      if (statusLower === 'hadir') rekapData[siswaId][mapel].hadir++;
+      else if (statusLower === 'izin') rekapData[siswaId][mapel].izin++;
+      else if (statusLower === 'sakit') rekapData[siswaId][mapel].sakit++;
+      else if (statusLower === 'alfa') rekapData[siswaId][mapel].alfa++;
+    }
+  }
+
+  // Hitung hari efektif per mapel
+  const hariEfektif = {};
+  MAPEL_LIST.forEach(function(m) {
+    hariEfektif[m] = Object.keys(tanggalUnikPerMapel[m]).length;
+  });
+  const totalHariEfektif = MAPEL_LIST.reduce(function(sum, m) { return sum + hariEfektif[m]; }, 0);
+
+  // Bangun result array
+  const result = [];
+  const siswaIds = Object.keys(siswaMap);
+  siswaIds.forEach(function(sid) {
+    const info = siswaMap[sid];
+    const perMapel = {};
+    let totalHadir = 0;
+    let totalHari = 0;
+
+    MAPEL_LIST.forEach(function(m) {
+      const d = rekapData[sid] && rekapData[sid][m]
+        ? rekapData[sid][m]
+        : { hadir: 0, izin: 0, sakit: 0, alfa: 0 };
+      const hari = hariEfektif[m];
+      const persen = hari > 0 ? Math.round((d.hadir / hari) * 100) : 0;
+      perMapel[m] = {
+        hadir: d.hadir,
+        izin: d.izin,
+        sakit: d.sakit,
+        alfa: d.alfa,
+        total_hari: hari,
+        persen: persen
+      };
+      totalHadir += d.hadir;
+      totalHari += hari;
+    });
+
+    const persenTotal = totalHari > 0 ? Math.round((totalHadir / totalHari) * 100) : 0;
+
+    result.push({
+      siswa_id: sid,
+      nama: info.nama,
+      kelas: info.kelas,
+      per_mapel: perMapel,
+      total_hadir: totalHadir,
+      total_hari: totalHari,
+      persen_total: persenTotal
+    });
+  });
+
+  // Sort by nama
+  result.sort(function(a, b) { return String(a.nama).localeCompare(String(b.nama), 'id'); });
+
+  // Ringkasan
+  let rataRata = 0;
+  let tertinggi = { nama: '-', persen: 0 };
+  let terendah = { nama: '-', persen: 100 };
+  if (result.length > 0) {
+    let sumPersen = 0;
+    result.forEach(function(r) {
+      sumPersen += r.persen_total;
+      if (r.persen_total > tertinggi.persen) tertinggi = { nama: r.nama, persen: r.persen_total };
+      if (r.persen_total < terendah.persen) terendah = { nama: r.nama, persen: r.persen_total };
+    });
+    rataRata = Math.round(sumPersen / result.length);
+  }
+
+  return {
+    ok: true,
+    bulan: bulan,
+    tahun: tahun,
+    kelas_filter: kelasFilter || null,
+    hari_efektif: hariEfektif,
+    ringkasan: {
+      total_siswa: result.length,
+      rata_rata: rataRata,
+      tertinggi: tertinggi,
+      terendah: terendah
+    },
+    data: result
+  };
+}
+
+// ============ RIWAYAT KEHADIRAN SISWA (siswa) ============
+/**
+ * Mengambil riwayat kehadiran personal siswa. Jika bulan dan tahun diberikan,
+ * menampilkan detail bulan tersebut. Jika tidak, menampilkan ringkasan semua
+ * bulan yang ada datanya.
+ *
+ * Return: {
+ *   ok, profil: {nama, kelas, nis},
+ *   rekap_bulanan: [{ bulan, tahun, label, per_mapel: {...}, persen_total }],
+ *   detail: [{ tanggal, mapel, status, waktu }]  // hanya jika bulan+tahun diberikan
+ * }
+ */
+function getRiwayatSiswa(session, bulan, tahun) {
+  const siswaData = getSiswaById(session.user_id);
+  if (!siswaData) return { ok: false, error: 'Data siswa tidak ditemukan' };
+
+  const absensiRows = getSheet(SHEET_ABSENSI).getDataRange().getValues();
+
+  // Kumpulkan semua record milik siswa ini
+  const records = [];
+  for (let i = 1; i < absensiRows.length; i++) {
+    const [, siswaId, , , mapel, tanggalRaw, waktu, status] = absensiRows[i];
+    if (String(siswaId) !== String(session.user_id)) continue;
+    const tanggal = normalizeTanggal(tanggalRaw);
+    records.push({ tanggal: tanggal, mapel: mapel, status: status, waktu: waktu || '' });
+  }
+
+  // Group by bulan-tahun
+  const bulanMap = {}; // "2024-07" -> { records: [...], tanggalUnik: { mapel: Set } }
+  records.forEach(function(r) {
+    const key = r.tanggal.substring(0, 7); // "yyyy-MM"
+    if (!bulanMap[key]) {
+      bulanMap[key] = { records: [], tanggalUnik: {} };
+      MAPEL_LIST.forEach(function(m) { bulanMap[key].tanggalUnik[m] = {}; });
+    }
+    bulanMap[key].records.push(r);
+    if (bulanMap[key].tanggalUnik[r.mapel]) {
+      bulanMap[key].tanggalUnik[r.mapel][r.tanggal] = true;
+    }
+  });
+
+  // Hitung hari efektif global per mapel per bulan (dari SEMUA siswa, bukan cuma siswa ini)
+  // Ini penting agar siswa yang banyak alfa tetap punya denominator yang benar
+  const allTanggalPerMapelPerBulan = {};
+  for (let i = 1; i < absensiRows.length; i++) {
+    const [, , , kelas, mapel, tanggalRaw] = absensiRows[i];
+    if (kelas !== siswaData.kelas) continue; // hanya kelas yg sama
+    const tanggal = normalizeTanggal(tanggalRaw);
+    const key = tanggal.substring(0, 7);
+    if (!allTanggalPerMapelPerBulan[key]) {
+      allTanggalPerMapelPerBulan[key] = {};
+      MAPEL_LIST.forEach(function(m) { allTanggalPerMapelPerBulan[key][m] = {}; });
+    }
+    if (allTanggalPerMapelPerBulan[key][mapel]) {
+      allTanggalPerMapelPerBulan[key][mapel][tanggal] = true;
+    }
+  }
+
+  // Bangun rekap per bulan
+  const namaBulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const allKeys = Object.keys(bulanMap).concat(Object.keys(allTanggalPerMapelPerBulan));
+  if (bulan && tahun) {
+    var targetKey = parseInt(tahun, 10) + '-' + String(parseInt(bulan, 10)).padStart(2, '0');
+    allKeys.push(targetKey);
+  }
+  const uniqueKeys = [];
+  var seen = {};
+  allKeys.forEach(function(k) { if (!seen[k]) { seen[k] = true; uniqueKeys.push(k); } });
+  uniqueKeys.sort().reverse();
+
+  const rekapBulanan = [];
+  uniqueKeys.forEach(function(key) {
+    var parts = key.split('-');
+    var bln = parseInt(parts[1], 10);
+    var thn = parseInt(parts[0], 10);
+    var perMapel = {};
+    var totalHadir = 0;
+    var totalHari = 0;
+
+    MAPEL_LIST.forEach(function(m) {
+      var d = { hadir: 0, izin: 0, sakit: 0, alfa: 0 };
+      if (bulanMap[key]) {
+        bulanMap[key].records.forEach(function(r) {
+          if (r.mapel !== m) return;
+          var sl = String(r.status).toLowerCase();
+          if (sl === 'hadir') d.hadir++;
+          else if (sl === 'izin') d.izin++;
+          else if (sl === 'sakit') d.sakit++;
+          else if (sl === 'alfa') d.alfa++;
+        });
+      }
+      // Hari efektif dari data global kelas
+      var hari = allTanggalPerMapelPerBulan[key] && allTanggalPerMapelPerBulan[key][m]
+        ? Object.keys(allTanggalPerMapelPerBulan[key][m]).length : 0;
+      var persen = hari > 0 ? Math.round((d.hadir / hari) * 100) : 0;
+      perMapel[m] = { hadir: d.hadir, izin: d.izin, sakit: d.sakit, alfa: d.alfa, total_hari: hari, persen: persen };
+      totalHadir += d.hadir;
+      totalHari += hari;
+    });
+
+    var persenTotal = totalHari > 0 ? Math.round((totalHadir / totalHari) * 100) : 0;
+    rekapBulanan.push({
+      bulan: bln,
+      tahun: thn,
+      label: namaBulan[bln] + ' ' + thn,
+      per_mapel: perMapel,
+      total_hadir: totalHadir,
+      total_hari: totalHari,
+      persen_total: persenTotal
+    });
+  });
+
+  // Detail harian (jika bulan & tahun diberikan)
+  var detail = [];
+  if (bulan && tahun) {
+    var filterPrefix = parseInt(tahun, 10) + '-' + String(parseInt(bulan, 10)).padStart(2, '0');
+    detail = records.filter(function(r) { return r.tanggal.startsWith(filterPrefix); });
+    detail.sort(function(a, b) {
+      if (a.tanggal !== b.tanggal) return a.tanggal < b.tanggal ? 1 : -1;
+      return a.mapel < b.mapel ? -1 : 1;
+    });
+  }
+
+  return {
+    ok: true,
+    profil: { nama: siswaData.nama, kelas: siswaData.kelas, nis: siswaData.nis },
+    rekap_bulanan: rekapBulanan,
+    detail: detail
+  };
 }
 
 // ============ UTIL ============

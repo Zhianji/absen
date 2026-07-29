@@ -147,6 +147,138 @@
   }
   .btn-cancel { background: var(--ink-soft); }
   .btn-save { background: var(--primary); }
+
+  /* Tabs */
+  .tab-switcher {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+  .tab-btn svg { width: 18px; height: 18px; }
+
+  /* Riwayat specific CSS */
+  .stage-riwayat {
+    padding: 24px 20px 40px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .riwayat-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .riwayat-header h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--ink); }
+  .riwayat-header .overall-persen { font-size: 32px; font-weight: 700; margin-top: 8px; }
+  .overall-persen.high { color: var(--success); }
+  .overall-persen.mid { color: #f59e0b; }
+  .overall-persen.low { color: var(--danger); }
+
+  .rekap-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .rekap-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 8px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  }
+  .stat-value { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; font-weight: 600; }
+  .stat-hadir .stat-value { color: var(--success); }
+  .stat-izin .stat-value { color: var(--primary); }
+  .stat-sakit .stat-value { color: #f59e0b; }
+  .stat-alfa .stat-value { color: var(--danger); }
+
+  .filter-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    justify-content: center;
+  }
+  .filter-bar label { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
+  .filter-bar select {
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); font-family: inherit; font-size: 13px;
+    color: var(--ink); outline: none;
+  }
+
+  .mapel-recap-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+  }
+  @media (max-width: 480px) {
+    .mapel-recap-grid { grid-template-columns: 1fr; }
+  }
+  .mapel-recap-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .mapel-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--ink); text-align: center;}
+  .mapel-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .mapel-detail div { font-size: 12px; text-align: center; }
+  .mapel-detail div span { display: block; font-weight: 700; font-size: 14px; }
+  
+  .progress-bar {
+    height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-bottom: 6px;
+  }
+  .progress-fill { height: 100%; transition: width 0.3s ease; }
+  .progress-fill.high { background: var(--success); }
+  .progress-fill.mid { background: #f59e0b; }
+  .progress-fill.low { background: var(--danger); }
+  .persen-label { font-size: 12px; text-align: center; font-weight: 600; }
+  .persen-label.high { color: var(--success); }
+  .persen-label.mid { color: #f59e0b; }
+  .persen-label.low { color: var(--danger); }
+
+  .table-wrap {
+    overflow-x: auto; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 24px;
+  }
+  .rekap-table { width: 100%; border-collapse: collapse; min-width: 400px; text-align: left; }
+  .rekap-table th { background: var(--bg); font-size: 12px; font-weight: 600; color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .rekap-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--ink); }
+  .rekap-table tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-hadir { background: var(--success-bg); color: var(--success); }
+  .badge-izin { background: var(--primary-bg); color: var(--primary); }
+  .badge-sakit { background: #fef3c7; color: #d97706; }
+  .badge-alfa { background: var(--danger-bg); color: var(--danger); }
+
+  .month-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;
+  }
+  .month-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; cursor: pointer; transition: all 0.2s ease;
+  }
+  .month-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+  .month-card .mc-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--ink); }
+  .month-card .mc-persen { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -172,12 +304,40 @@
   </div>
 </div>
 
-<div class="stage">
+<div class="tab-switcher">
+  <button class="tab-btn active" onclick="switchTab('checkin')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+      <path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M9 10h.01"></path>
+    </svg> Check-in
+  </button>
+  <button class="tab-btn" onclick="switchTab('riwayat')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+    </svg> Riwayat
+  </button>
+</div>
+
+<div id="view-checkin" class="stage">
   <div class="clock" id="clock">--:--:--</div>
   <div class="date-line" id="dateLine">-</div>
 
   <div class="mapel-grid" id="mapelGrid">
     <!-- diisi lewat JS: kartu TIK & KKA -->
+  </div>
+</div>
+
+<div id="view-riwayat" class="stage-riwayat" style="display:none">
+  <div class="filter-bar">
+    <label>Bulan</label>
+    <select id="riwayatBulan" onchange="handleFilterChange()"></select>
+    <label>Tahun</label>
+    <select id="riwayatTahun" onchange="handleFilterChange()"></select>
+  </div>
+  
+  <div id="riwayatContent">
+    <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Memuat data...</div></div>
   </div>
 </div>
 
@@ -314,6 +474,199 @@
       clearSession();
       window.location.href = 'index.html';
     });
+  }
+
+  const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+  let riwayatData = null;
+  let currentRiwayatBulan = new Date().getMonth() + 1;
+  let currentRiwayatTahun = new Date().getFullYear();
+
+  function switchTab(tab) {
+    document.getElementById('view-checkin').style.display = tab === 'checkin' ? '' : 'none';
+    document.getElementById('view-riwayat').style.display = tab === 'riwayat' ? '' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'checkin') || (i === 1 && tab === 'riwayat'));
+    });
+    if (tab === 'riwayat') {
+      initFilters();
+      if (!riwayatData) loadRiwayat();
+    }
+  }
+
+  function initFilters() {
+    const selBulan = document.getElementById('riwayatBulan');
+    const selTahun = document.getElementById('riwayatTahun');
+    if (selBulan.options.length === 0) {
+      NAMA_BULAN.forEach((b, i) => {
+        const opt = document.createElement('option');
+        opt.value = i + 1; opt.text = b;
+        selBulan.appendChild(opt);
+      });
+      const yr = new Date().getFullYear();
+      for (let i = yr - 2; i <= yr + 1; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.text = i;
+        selTahun.appendChild(opt);
+      }
+    }
+    selBulan.value = currentRiwayatBulan;
+    selTahun.value = currentRiwayatTahun;
+  }
+
+  function handleFilterChange() {
+    currentRiwayatBulan = parseInt(document.getElementById('riwayatBulan').value);
+    currentRiwayatTahun = parseInt(document.getElementById('riwayatTahun').value);
+    loadRiwayat();
+  }
+
+  async function loadRiwayat() {
+    const content = document.getElementById('riwayatContent');
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Memuat data...</div></div>';
+    try {
+      const res = await apiPost('getRiwayatSiswa', { token: getToken(), bulan: currentRiwayatBulan, tahun: currentRiwayatTahun });
+      if (res.ok) {
+        riwayatData = res;
+        renderRiwayat();
+      } else {
+        content.innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">${res.error || 'Gagal memuat data'}</div></div>`;
+      }
+    } catch (err) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Gagal terhubung ke server</div></div>';
+    }
+  }
+
+  function getPersenClass(persen) {
+    if (persen >= 80) return 'high';
+    if (persen >= 60) return 'mid';
+    return 'low';
+  }
+
+  function formatTanggal(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return `${NAMA_HARI[d.getDay()]}, ${d.getDate()} ${NAMA_BULAN[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function selectMonth(bulan, tahun) {
+    currentRiwayatBulan = bulan;
+    currentRiwayatTahun = tahun;
+    document.getElementById('riwayatBulan').value = bulan;
+    document.getElementById('riwayatTahun').value = tahun;
+    loadRiwayat();
+  }
+
+  function renderRiwayat() {
+    const content = document.getElementById('riwayatContent');
+    if (!riwayatData || !riwayatData.rekap_bulanan || riwayatData.rekap_bulanan.length === 0) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Belum ada data kehadiran pada bulan ini</div></div>';
+      return;
+    }
+    
+    // Cari rekap bulan terpilih; jika tidak ada data di bulan tsb, gunakan struktur default 0
+    const rekap = riwayatData.rekap_bulanan.find(r => r.bulan == currentRiwayatBulan && r.tahun == currentRiwayatTahun) || {
+      bulan: currentRiwayatBulan,
+      tahun: currentRiwayatTahun,
+      label: (NAMA_BULAN[currentRiwayatBulan - 1] || '') + ' ' + currentRiwayatTahun,
+      persen_total: 0,
+      total_hadir: 0,
+      per_mapel: {
+        TIK: { hadir: 0, izin: 0, sakit: 0, alfa: 0, total_hari: 0, persen: 0 },
+        KKA: { hadir: 0, izin: 0, sakit: 0, alfa: 0, total_hari: 0, persen: 0 }
+      }
+    };
+
+    const pClass = getPersenClass(rekap.persen_total);
+    
+    let html = `
+      <div class="riwayat-header">
+        <h2>${rekap.label || (NAMA_BULAN[rekap.bulan - 1] + ' ' + rekap.tahun)}</h2>
+        <div class="overall-persen ${pClass}">${rekap.persen_total}%</div>
+      </div>
+    `;
+
+    // Hitung total kehadiran berdasarkan detail rekap
+    let tHadir = 0, tIzin = 0, tSakit = 0, tAlfa = 0;
+    if (rekap.per_mapel) {
+      Object.values(rekap.per_mapel).forEach(m => {
+        tHadir += m.hadir || 0;
+        tIzin += m.izin || 0;
+        tSakit += m.sakit || 0;
+        tAlfa += m.alfa || 0;
+      });
+    } else {
+      // Fallback if we have summary variables
+      tHadir = rekap.total_hadir || 0;
+    }
+
+    html += `
+      <div class="rekap-stats">
+        <div class="rekap-stat-card stat-hadir"><div class="stat-value">${tHadir}</div><div class="stat-label">Hadir</div></div>
+        <div class="rekap-stat-card stat-izin"><div class="stat-value">${tIzin}</div><div class="stat-label">Izin</div></div>
+        <div class="rekap-stat-card stat-sakit"><div class="stat-value">${tSakit}</div><div class="stat-label">Sakit</div></div>
+        <div class="rekap-stat-card stat-alfa"><div class="stat-value">${tAlfa}</div><div class="stat-label">Alfa</div></div>
+      </div>
+    `;
+
+    if (rekap.per_mapel) {
+      html += `<div class="mapel-recap-grid">`;
+      for (const [mName, mData] of Object.entries(rekap.per_mapel)) {
+        const c = getPersenClass(mData.persen);
+        html += `
+          <div class="mapel-recap-card">
+            <div class="mapel-title">${mName}</div>
+            <div class="mapel-detail">
+              <div><span style="color:var(--success)">${mData.hadir}</span>Hadir</div>
+              <div><span style="color:var(--primary)">${mData.izin}</span>Izin</div>
+              <div><span style="color:#f59e0b">${mData.sakit}</span>Sakit</div>
+              <div><span style="color:var(--danger)">${mData.alfa}</span>Alfa</div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${c}" style="width:${mData.persen}%"></div></div>
+            <div class="persen-label ${c}">${mData.persen}%</div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+
+    if (riwayatData.detail && riwayatData.detail.length > 0) {
+      html += `<div class="table-wrap"><table class="rekap-table">
+        <thead><tr><th>Tanggal</th><th>Mapel</th><th>Status</th><th>Waktu</th></tr></thead><tbody>`;
+      riwayatData.detail.forEach(d => {
+        const st = d.status.toLowerCase();
+        const bClass = st === 'hadir' ? 'badge-hadir' :
+                       st === 'izin' ? 'badge-izin' :
+                       st === 'sakit' ? 'badge-sakit' : 'badge-alfa';
+        html += `<tr>
+          <td>${formatTanggal(d.tanggal)}</td>
+          <td>${d.mapel}</td>
+          <td><span class="badge ${bClass}">${d.status}</span></td>
+          <td>${d.waktu || '-'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else {
+      html += `<div style="text-align:center; padding:24px; color:var(--ink-soft); font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:20px;">Tidak ada rincian absensi harian pada bulan ${NAMA_BULAN[currentRiwayatBulan - 1]} ${currentRiwayatTahun}</div>`;
+    }
+
+    if (riwayatData.rekap_bulanan && riwayatData.rekap_bulanan.length > 1) {
+      html += `<h3 style="font-size:14px; margin-bottom:12px; color:var(--ink); margin-top:32px;">Riwayat Bulan Lainnya</h3><div class="month-cards">`;
+      riwayatData.rekap_bulanan.forEach(r => {
+        if (r.bulan == currentRiwayatBulan && r.tahun == currentRiwayatTahun) return;
+        const pc = getPersenClass(r.persen_total);
+        html += `
+          <div class="month-card" onclick="selectMonth(${r.bulan}, ${r.tahun})">
+            <div class="mc-name">${r.label || (NAMA_BULAN[r.bulan-1] + ' ' + r.tahun)}</div>
+            <div class="mc-persen ${pc}">${r.persen_total}%</div>
+            <div class="progress-bar"><div class="progress-fill ${pc}" style="width:${r.persen_total}%"></div></div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    content.innerHTML = html;
   }
 
   (async function init() {

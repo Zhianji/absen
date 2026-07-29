@@ -159,3 +159,246 @@ input::placeholder { color: var(--ink-faint); }
   -webkit-overflow-scrolling: touch;
 }
 .table-wrap table { min-width: 560px; }
+
+/* ============ PROGRESS BAR ============ */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg, #f5f6fa);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+.progress-fill.high { background: linear-gradient(90deg, #6dd497, #34b36a); }
+.progress-fill.mid { background: linear-gradient(90deg, #ffd166, #e6a817); }
+.progress-fill.low { background: linear-gradient(90deg, #ff9a9a, #e05252); }
+
+.persen-label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.persen-label.high { color: #1e9e6b; }
+.persen-label.mid { color: #c78a10; }
+.persen-label.low { color: #d44040; }
+
+/* ============ TAB SWITCHER (Siswa) ============ */
+.tab-switcher {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  gap: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tab-btn:active { transform: none; }
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.tab-btn:hover:not(.active) {
+  color: var(--ink);
+  background: rgba(46, 92, 230, 0.04);
+}
+
+/* ============ REKAP STAT CARDS ============ */
+.rekap-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.rekap-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(27, 34, 51, 0.04);
+}
+.rekap-stat-card .stat-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.rekap-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.rekap-stat-card .stat-sub {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+/* ============ MONTH CARDS (Siswa Riwayat) ============ */
+.month-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.month-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(27, 34, 51, 0.04);
+}
+.month-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(27, 34, 51, 0.1);
+  border-color: var(--primary);
+}
+.month-card.active {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+}
+.month-card .month-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.month-card .month-persen {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* ============ STATUS BADGES (Extended) ============ */
+.badge-hadir { background: #e6f7ef; color: #1e9e6b; }
+.badge-izin { background: #eaf0ff; color: #2e5ce6; }
+.badge-sakit { background: #fbf1de; color: #c78a10; }
+.badge-alfa { background: #fdebea; color: #d44040; }
+
+/* ============ REKAP TABLE ============ */
+.rekap-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.rekap-table thead th {
+  background: var(--bg);
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.rekap-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+}
+.rekap-table tbody tr:hover {
+  background: rgba(124, 156, 255, 0.04);
+}
+.rekap-table .col-num { width: 40px; text-align: center; color: var(--ink-faint); }
+.rekap-table .col-persen { width: 140px; }
+
+/* ============ MAPEL RECAP CARDS (Siswa) ============ */
+.mapel-recap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.mapel-recap-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(27, 34, 51, 0.04);
+}
+.mapel-recap-card .mapel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+.mapel-recap-card .mapel-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.mapel-recap-card .mapel-detail .label { color: var(--ink-soft); }
+.mapel-recap-card .mapel-detail .value { font-weight: 600; font-family: var(--font-mono); text-align: right; }
+
+/* ============ FILTER BAR ============ */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.filter-bar select, .filter-bar input {
+  width: auto;
+  min-width: 120px;
+}
+.filter-bar label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ============ EMPTY STATE ============ */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--ink-faint);
+}
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.empty-state .empty-text {
+  font-size: 15px;
+  font-weight: 500;
+}

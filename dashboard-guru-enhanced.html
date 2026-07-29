@@ -224,6 +224,24 @@
   .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .filter-row input, .filter-row select { width: auto; min-width: 140px; }
 
+  /* ===== REKAP BULANAN ===== */
+  .rekap-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .rekap-stat-card { padding: 16px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+  .rekap-stat-card .stat-label { font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+  .rekap-stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--ink); }
+  .rekap-stat-card .stat-sub { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .rekap-table th.col-num { width: 50px; text-align: center; }
+  .rekap-table td.col-num { text-align: center; font-weight: 600; color: var(--ink-soft); }
+  .progress-bar { width: 100%; height: 8px; background: var(--border); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+  .progress-fill.high { background: var(--success); }
+  .progress-fill.mid { background: var(--amber); }
+  .progress-fill.low { background: var(--danger); }
+  .persen-label { font-size: 12px; font-weight: 600; }
+  .persen-label.high { color: var(--success); }
+  .persen-label.mid { color: var(--amber); }
+  .persen-label.low { color: var(--danger); }
+
   .pagination-bar {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; flex-wrap: wrap;
@@ -338,6 +356,7 @@
   <button class="nav-item" data-view="siswa" onclick="switchView('siswa')">👥 Data Siswa</button>
   <button class="nav-item" data-view="kehadiran" onclick="switchView('kehadiran')">✅ Tandai Kehadiran</button>
   <button class="nav-item" data-view="laporan" onclick="switchView('laporan')">📑 Laporan</button>
+  <button class="nav-item" data-view="rekap" onclick="switchView('rekap')">📊 Rekap Bulanan</button>
   <a class="nav-item" href="admin.html">🔐 Kelola Akun Admin</a>
   <div class="sidebar-footer">
     <div class="who" id="namaGuru">-</div>
@@ -601,6 +620,79 @@
     </div>
   </div>
 
+  <!-- ===== REKAP BULANAN ===== -->
+  <section id="view-rekap" class="hidden">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h2>Rekap Bulanan</h2>
+        <p>Ringkasan persentase kehadiran siswa per bulan</p>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="filter-row">
+        <select id="rekapBulan">
+          <option value="1">Januari</option>
+          <option value="2">Februari</option>
+          <option value="3">Maret</option>
+          <option value="4">April</option>
+          <option value="5">Mei</option>
+          <option value="6">Juni</option>
+          <option value="7">Juli</option>
+          <option value="8">Agustus</option>
+          <option value="9">September</option>
+          <option value="10">Oktober</option>
+          <option value="11">November</option>
+          <option value="12">Desember</option>
+        </select>
+        <input type="number" id="rekapTahun" min="2000" max="2100" />
+        <select id="rekapKelas">
+          <option value="">Semua Kelas</option>
+        </select>
+        <button class="btn-primary" onclick="loadRekapBulanan()">🔍 Tampilkan</button>
+        <button class="btn-ghost" onclick="exportRekapCSV()">📊 Export CSV</button>
+      </div>
+      
+      <div class="rekap-stats" id="rekapStatsWrap" style="display:none">
+        <div class="rekap-stat-card">
+          <div class="stat-label">Total Siswa</div>
+          <div class="stat-value" id="rekapStatTotal">-</div>
+        </div>
+        <div class="rekap-stat-card">
+          <div class="stat-label">Rata-rata Kehadiran</div>
+          <div class="stat-value" id="rekapStatRata">-</div>
+        </div>
+        <div class="rekap-stat-card">
+          <div class="stat-label">Kehadiran Tertinggi</div>
+          <div class="stat-value" id="rekapStatTinggiVal">-</div>
+          <div class="stat-sub" id="rekapStatTinggiNama">-</div>
+        </div>
+        <div class="rekap-stat-card">
+          <div class="stat-label">Kehadiran Terendah</div>
+          <div class="stat-value" id="rekapStatRendahVal">-</div>
+          <div class="stat-sub" id="rekapStatRendahNama">-</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="rekap-table">
+          <thead>
+            <tr>
+              <th class="col-num">No</th>
+              <th style="cursor:pointer" onclick="sortRekap('nama')">Nama ↕</th>
+              <th style="cursor:pointer" onclick="sortRekap('kelas')">Kelas ↕</th>
+              <th>TIK (H/I/S/A/%)</th>
+              <th>KKA (H/I/S/A/%)</th>
+              <th class="col-persen" style="cursor:pointer" onclick="sortRekap('persen_total')">Total % ↕</th>
+            </tr>
+          </thead>
+          <tbody id="tblRekap">
+            <tr class="empty-row"><td colspan="6">Pilih filter dan klik Tampilkan</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -634,9 +726,10 @@
   }
 
   function switchView(view) {
-    ['overview','siswa','kehadiran','laporan'].forEach((v) => {
+    ['overview','siswa','kehadiran','laporan','rekap'].forEach((v) => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
-      document.querySelector(`.nav-item[data-view="${v}"]`).classList.toggle('active', v === view);
+      const navItem = document.querySelector(`.nav-item[data-view="${v}"]`);
+      if (navItem) navItem.classList.toggle('active', v === view);
     });
     if (view === 'siswa' && siswaCache.length === 0) loadSiswa();
     if (view === 'laporan') {
@@ -649,6 +742,15 @@
       if (!document.getElementById('khTanggal').value) document.getElementById('khTanggal').value = today;
       populateKelasFilterKehadiran();
       if (siswaCache.length === 0) loadSiswa().then(populateKelasFilterKehadiran);
+    }
+    if (view === 'rekap') {
+      const now = new Date();
+      if (!document.getElementById('rekapTahun').value) {
+        document.getElementById('rekapBulan').value = now.getMonth() + 1;
+        document.getElementById('rekapTahun').value = now.getFullYear();
+      }
+      populateKelasFilterRekap();
+      if (siswaCache.length === 0) loadSiswa().then(populateKelasFilterRekap);
     }
     closeSidebar();
   }
@@ -1468,6 +1570,163 @@
     a.href = url; a.download = `laporan-absensi-${document.getElementById('fltMulai').value}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // ===== REKAP BULANAN =====
+  let rekapData = null;
+  let rekapSortField = 'nama';
+  let rekapSortAsc = true;
+
+  async function loadRekapBulanan() {
+    const bulan = document.getElementById('rekapBulan').value;
+    const tahun = document.getElementById('rekapTahun').value;
+    const kelas = document.getElementById('rekapKelas').value;
+
+    document.getElementById('tblRekap').innerHTML = '<tr class="empty-row"><td colspan="6">Memuat...</td></tr>';
+    document.getElementById('rekapStatsWrap').style.display = 'none';
+
+    try {
+      const res = await apiPost('getRekapBulanan', { token: getToken(), bulan: Number(bulan), tahun: Number(tahun), kelas });
+      if (res.ok) {
+        rekapData = res;
+        renderRekapBulanan();
+      } else {
+        document.getElementById('tblRekap').innerHTML = '<tr class="empty-row"><td colspan="6">Gagal memuat data</td></tr>';
+        showToast(res.error || 'Gagal memuat rekap', 'error');
+      }
+    } catch (err) {
+      document.getElementById('tblRekap').innerHTML = '<tr class="empty-row"><td colspan="6">Gagal terhubung ke server</td></tr>';
+      showToast('Gagal terhubung ke server', 'error');
+    }
+  }
+
+  function getPersenClass(persen) {
+    if (persen >= 80) return 'high';
+    if (persen >= 60) return 'mid';
+    return 'low';
+  }
+
+  function renderRekapBulanan() {
+    if (!rekapData) return;
+
+    // Render Stats
+    document.getElementById('rekapStatsWrap').style.display = 'grid';
+    document.getElementById('rekapStatTotal').textContent = rekapData.ringkasan.total_siswa;
+    document.getElementById('rekapStatRata').textContent = rekapData.ringkasan.rata_rata + '%';
+    
+    if (rekapData.ringkasan.tertinggi) {
+      document.getElementById('rekapStatTinggiVal').textContent = rekapData.ringkasan.tertinggi.persen + '%';
+      document.getElementById('rekapStatTinggiNama').textContent = rekapData.ringkasan.tertinggi.nama;
+    } else {
+      document.getElementById('rekapStatTinggiVal').textContent = '-';
+      document.getElementById('rekapStatTinggiNama').textContent = '-';
+    }
+
+    if (rekapData.ringkasan.terendah) {
+      document.getElementById('rekapStatRendahVal').textContent = rekapData.ringkasan.terendah.persen + '%';
+      document.getElementById('rekapStatRendahNama').textContent = rekapData.ringkasan.terendah.nama;
+    } else {
+      document.getElementById('rekapStatRendahVal').textContent = '-';
+      document.getElementById('rekapStatRendahNama').textContent = '-';
+    }
+
+    // Sort Data
+    const data = [...rekapData.data];
+    data.sort((a, b) => {
+      let valA = a[rekapSortField];
+      let valB = b[rekapSortField];
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      
+      if (valA < valB) return rekapSortAsc ? -1 : 1;
+      if (valA > valB) return rekapSortAsc ? 1 : -1;
+      return 0;
+    });
+
+    const tbody = document.getElementById('tblRekap');
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Tidak ada data untuk bulan ini</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map((row, i) => {
+      const pTotalClass = getPersenClass(row.persen_total);
+      
+      const pTIK = row.per_mapel.TIK ? row.per_mapel.TIK.persen : 0;
+      const cTIK = getPersenClass(pTIK);
+      const strTIK = row.per_mapel.TIK ? 
+        `${row.per_mapel.TIK.hadir}/${row.per_mapel.TIK.izin}/${row.per_mapel.TIK.sakit}/${row.per_mapel.TIK.alfa}` : '-';
+
+      const pKKA = row.per_mapel.KKA ? row.per_mapel.KKA.persen : 0;
+      const cKKA = getPersenClass(pKKA);
+      const strKKA = row.per_mapel.KKA ? 
+        `${row.per_mapel.KKA.hadir}/${row.per_mapel.KKA.izin}/${row.per_mapel.KKA.sakit}/${row.per_mapel.KKA.alfa}` : '-';
+
+      return `
+        <tr>
+          <td class="col-num">${i + 1}</td>
+          <td>${escapeHtml(row.nama)}</td>
+          <td>${escapeHtml(row.kelas)}</td>
+          <td>
+            <div style="margin-bottom:4px">${strTIK} <span class="persen-label ${cTIK}">(${pTIK}%)</span></div>
+            <div class="progress-bar"><div class="progress-fill ${cTIK}" style="width:${pTIK}%"></div></div>
+          </td>
+          <td>
+            <div style="margin-bottom:4px">${strKKA} <span class="persen-label ${cKKA}">(${pKKA}%)</span></div>
+            <div class="progress-bar"><div class="progress-fill ${cKKA}" style="width:${pKKA}%"></div></div>
+          </td>
+          <td>
+            <div style="margin-bottom:4px"><span class="persen-label ${pTotalClass}">${row.persen_total}%</span></div>
+            <div class="progress-bar"><div class="progress-fill ${pTotalClass}" style="width:${row.persen_total}%"></div></div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function sortRekap(field) {
+    if (rekapSortField === field) {
+      rekapSortAsc = !rekapSortAsc;
+    } else {
+      rekapSortField = field;
+      rekapSortAsc = true;
+    }
+    renderRekapBulanan();
+  }
+
+  function exportRekapCSV() {
+    if (!rekapData || !rekapData.data || rekapData.data.length === 0) {
+      showToast('Tidak ada data untuk diexport', 'error');
+      return;
+    }
+    const csvField = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const header = 'Nama,Kelas,Total Hadir,Total Hari,Persen Total,TIK H,TIK I,TIK S,TIK A,TIK %,KKA H,KKA I,KKA S,KKA A,KKA %\n';
+    const rows = rekapData.data.map(r => {
+      const t = r.per_mapel.TIK || {};
+      const k = r.per_mapel.KKA || {};
+      return [
+        csvField(r.nama), csvField(r.kelas), r.total_hadir, r.total_hari, r.persen_total,
+        t.hadir||0, t.izin||0, t.sakit||0, t.alfa||0, t.persen||0,
+        k.hadir||0, k.izin||0, k.sakit||0, k.alfa||0, k.persen||0
+      ].join(',');
+    }).join('\n');
+    
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; 
+    a.download = `rekap-bulanan-${rekapData.tahun}-${rekapData.bulan}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function populateKelasFilterRekap() {
+    const select = document.getElementById('rekapKelas');
+    const current = select.value;
+    const kelasUnik = Array.from(new Set(siswaCache.map(s => String(s.kelas)).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id'));
+    select.innerHTML = '<option value="">Semua Kelas</option>' +
+      kelasUnik.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if (kelasUnik.includes(current)) select.value = current;
   }
 
   function doLogout() {

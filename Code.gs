@@ -408,9 +408,9 @@ function getAbsensiHariIni(siswaId) {
   const status = {};
   MAPEL_LIST.forEach((m) => (status[m] = null));
   for (let i = 1; i < rows.length; i++) {
-    const [, siswaIdRow, , , mapel, rowTanggal, waktu] = rows[i];
+    const [, siswaIdRow, , , mapel, rowTanggal, waktu, statusRow] = rows[i];
     if (String(siswaIdRow) === String(siswaId) && normalizeTanggal(rowTanggal) === tanggal) {
-      status[mapel] = waktu;
+      status[mapel] = waktu || statusRow || 'Tercatat';
     }
   }
   return { ok: true, tanggal: tanggal, status: status };

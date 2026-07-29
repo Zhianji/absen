@@ -378,17 +378,19 @@
 
   function renderMapelGrid() {
     const grid = document.getElementById('mapelGrid');
+    if (!grid) return;
     grid.innerHTML = '';
     MAPEL.forEach((mapel) => {
-      const done = statusMap[mapel];
+      const done = statusMap ? statusMap[mapel] : null;
+      const isDone = Boolean(done);
       const card = document.createElement('div');
       card.className = 'mapel-card';
       card.innerHTML = `
         <div class="mapel-name">${mapel}</div>
-        <button class="checkin-btn ${done ? 'done' : ''}" data-mapel="${mapel}" ${done ? 'disabled' : ''}>
-          ${done ? '&#10003;' : 'Absen'}
+        <button class="checkin-btn ${isDone ? 'done' : ''}" data-mapel="${mapel}" ${isDone ? 'disabled' : ''}>
+          ${isDone ? '&#10003;' : 'Absen'}
         </button>
-        <div class="mapel-status">${done ? 'Tercatat ' + done : 'Belum check-in'}</div>
+        <div class="mapel-status">${isDone ? 'Tercatat ' + done : 'Belum check-in'}</div>
       `;
       grid.appendChild(card);
     });
@@ -397,8 +399,12 @@
     });
   }
 
+  // Tampilkan tombol TIK & KKA secara langsung tanpa menunggu fetch API
+  renderMapelGrid();
+
   function showToast(msg, type) {
     const el = document.getElementById('toast');
+    if (!el) return;
     el.textContent = msg;
     el.className = 'toast show ' + (type || '');
     setTimeout(() => { el.className = 'toast'; }, 3200);
@@ -409,14 +415,14 @@
     btnEl.textContent = '...';
     try {
       const res = await apiPost('checkin', { token: getToken(), mapel });
-      if (res.ok) {
-        statusMap[mapel] = res.waktu;
+      if (res && res.ok) {
+        statusMap[mapel] = res.waktu || 'Hadir';
         renderMapelGrid();
-        showToast(res.message, 'success');
+        showToast(res.message || ('Check-in ' + mapel + ' berhasil'), 'success');
         const newBtn = document.querySelector(`.checkin-btn[data-mapel="${mapel}"]`);
         if (newBtn) newBtn.classList.add('just-done');
       } else {
-        showToast(res.error, 'error');
+        showToast(res ? res.error : 'Gagal check-in', 'error');
         btnEl.disabled = false;
         btnEl.textContent = 'Absen';
       }
@@ -428,9 +434,14 @@
   }
 
   async function loadStatus() {
-    const res = await apiPost('getAbsensiHariIni', { token: getToken() });
-    if (res.ok) {
-      statusMap = res.status;
+    try {
+      const res = await apiPost('getAbsensiHariIni', { token: getToken() });
+      if (res && res.ok && res.status) {
+        statusMap = Object.assign({ TIK: null, KKA: null }, res.status);
+      }
+    } catch (err) {
+      console.error('Gagal memuat status absensi:', err);
+    } finally {
       renderMapelGrid();
     }
   }

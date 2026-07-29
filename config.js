@@ -1,5 +1,5 @@
 // ==== GANTI DENGAN URL WEB APP APPS SCRIPT KAMU (lihat apps-script/SETUP.md) ====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyADHTvQfarDt-9L7IMSfsG8PN4IbycX-1ZIA2CnMZ3RrKpw4kqHa8ei6TmGlijp-ng2w/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwj9coGwg7srk0-iICdbtaau6UxPnkyWqPFbpB8yh8qmihR1mpfnLjECOXUA9YNrMSTew/exec';
 
 const TOKEN_KEY = 'absensi_token';
 const ROLE_KEY = 'absensi_role';

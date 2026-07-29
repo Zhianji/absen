@@ -772,14 +772,25 @@
       showOverviewSkeleton();
     }
 
-    // Selalu fetch data terbaru di background, lalu re-render + simpan cache.
-    // FIX: ambil rentang 7 hari (bukan cuma hari ini) supaya chart "Attendance
-    // Trend (7 Hari Terakhir)" benar-benar berisi data 7 hari, bukan 1 batang
-    // terisi + 6 batang kosong.
-    const [siswaRes, laporanRes] = await Promise.all([
-      apiPost('getSiswaList', { token }),
-      apiPost('getLaporan', { token, tanggal_mulai: startDate, tanggal_selesai: today }),
-    ]);
+    // OPTIMASI: dulu getSiswaList + getLaporan dipanggil sebagai 2 action
+    // Apps Script TERPISAH lewat Promise.all. Paralel di sisi browser tidak
+    // banyak membantu karena tiap request Apps Script tetap kena overhead
+    // redirect ~1-1.5 detik masing-masing, dan keduanya baru mulai SETELAH
+    // checkSession di init() selesai -- jadi totalnya 2 round-trip berurutan.
+    // Sekarang digabung jadi 1 action 'getOverview' (lihat Code.gs), plus
+    // init() menjalankan checkSession BERSAMAAN dengan loadOverview() ini
+    // (bukan menunggu checkSession selesai dulu). FIX: tetap ambil rentang
+    // 7 hari (bukan cuma hari ini) supaya chart "Attendance Trend (7 Hari
+    // Terakhir)" berisi data 7 hari, bukan 1 batang terisi + 6 batang kosong.
+    const overviewRes = await apiPost('getOverview', { token, tanggal_mulai: startDate, tanggal_selesai: today });
+
+    if (!overviewRes.ok) {
+      renderOverview({ ok: false }, { ok: false });
+      return;
+    }
+
+    const siswaRes = overviewRes.siswa;
+    const laporanRes = overviewRes.laporan;
 
     if (siswaRes.ok) setCached('cache_siswa_list', siswaRes);
     if (laporanRes.ok) setCached('cache_overview_v2', laporanRes);
@@ -1471,11 +1482,30 @@
   }
 
   (async function init() {
-    const session = await guardPage('guru');
-    if (!session) return;
+    const token = getToken();
+    if (!token) {
+      window.location.href = 'index.html';
+      return;
+    }
     document.getElementById('namaGuru').textContent = getNama();
     updateClock();
-    await loadOverview();
+
+    // OPTIMASI: checkSession & loadOverview() sekarang jalan BERSAMAAN,
+    // bukan berurutan (sebelumnya lewat guardPage() yang menunggu
+    // checkSession selesai lebih dulu baru memuat data -- 2 round-trip
+    // Apps Script berurutan, masing-masing ~1-1.5 detik). Kalau ternyata
+    // token sudah tidak valid, getOverview() di loadOverview() akan tetap
+    // ditolak server (requireRole mengecek ulang token secara independen),
+    // jadi tidak ada data yang bocor -- ini murni menghemat waktu tunggu
+    // untuk kasus normal (token valid).
+    const overviewPromise = loadOverview();
+    const check = await apiPost('checkSession', { token });
+    if (!check.ok || check.role !== 'guru') {
+      clearSession();
+      window.location.href = 'index.html';
+      return;
+    }
+    await overviewPromise;
   })();
 </script>
 </body>

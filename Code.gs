@@ -162,6 +162,9 @@ function doPost(e) {
       case 'changeOwnPassword':
         result = requireRole(body.token, 'guru', (session) => changeOwnPassword(session, body.old_password, body.new_password));
         break;
+      case 'changeSiswaPassword':
+        result = requireRole(body.token, 'siswa', (session) => changeSiswaPassword(session, body.old_password, body.new_password));
+        break;
       default:
         result = { ok: false, error: 'Action tidak dikenal: ' + action };
     }
@@ -845,6 +848,30 @@ function changeOwnPassword(session, oldPassword, newPassword) {
   }
 
   const sheet = getSheet(SHEET_GURU);
+  const rows = sheet.getDataRange().getValues();
+  let targetIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(session.user_id)) { targetIndex = i; break; }
+  }
+  if (targetIndex === -1) return { ok: false, error: 'Akun tidak ditemukan' };
+
+  const currentHash = rows[targetIndex][2];
+  if (!verifyPassword(oldPassword, currentHash)) {
+    return { ok: false, error: 'Password lama salah' };
+  }
+  sheet.getRange(targetIndex + 1, 3).setValue(makePasswordHash(newPassword));
+  return { ok: true };
+}
+
+function changeSiswaPassword(session, oldPassword, newPassword) {
+  oldPassword = String(oldPassword || '');
+  newPassword = String(newPassword || '');
+  if (!oldPassword || !newPassword) return { ok: false, error: 'Password lama dan password baru wajib diisi' };
+  if (newPassword.length < 6) {
+    return { ok: false, error: 'Password baru minimal 6 karakter' };
+  }
+
+  const sheet = getSheet(SHEET_SISWA);
   const rows = sheet.getDataRange().getValues();
   let targetIndex = -1;
   for (let i = 1; i < rows.length; i++) {
